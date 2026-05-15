@@ -1,0 +1,48 @@
+#!/usr/bin/env node
+
+/**
+ * PEACEMAKER CLI Entry Point
+ * AI-Assisted Merge Guidance for Git Workflows
+ */
+
+const { program } = require('commander');
+const chalk = require('chalk');
+const packageJson = require('../package.json');
+
+// Import commands
+const analyzeCommand = require('../src/commands/analyze');
+const resolveCommand = require('../src/commands/resolve');
+
+// Configure CLI
+program
+  .name('peacemaker')
+  .description(chalk.bold('⚔️  PEACEMAKER - AI-Assisted Merge Guidance for Git Workflows'))
+  .version(packageJson.version, '-v, --version', 'Output the current version');
+
+// Analyze command
+program
+  .command('analyze [branch]')
+  .description('Analyze a branch for merge conflicts and divergence')
+  .option('-t, --target <branch>', 'Target branch to merge into', 'main')
+  .option('--ci', 'Run in CI mode (non-interactive)')
+  .option('-o, --output <format>', 'Output format (text|json)', 'text')
+  .action(analyzeCommand);
+
+// Resolve command
+program
+  .command('resolve [branch]')
+  .description('Get AI-powered suggestions for resolving merge conflicts')
+  .option('-t, --target <branch>', 'Target branch to merge into', 'main')
+  .option('--auto-apply', 'Automatically apply high-confidence suggestions')
+  .option('--ci', 'Run in CI mode (non-interactive)')
+  .action(resolveCommand);
+
+// Parse arguments
+program.parse(process.argv);
+
+// Show help if no command provided
+if (!process.argv.slice(2).length) {
+  program.outputHelp();
+}
+
+// Made with Bob

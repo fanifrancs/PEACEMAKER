@@ -1,0 +1,47 @@
+{
+  "name": "peacemaker",
+  "version": "1.0.0",
+  "description": "AI-Assisted Merge Guidance for Git Workflows - Transforms risky merges into guided integration workflows",
+  "main": "src/index.js",
+  "bin": {
+    "peacemaker": "./bin/peacemaker.js"
+  },
+  "scripts": {
+    "start": "node bin/peacemaker.js",
+    "dev": "node --watch bin/peacemaker.js",
+    "test": "jest",
+    "test:watch": "jest --watch",
+    "lint": "eslint src/**/*.js",
+    "lint:fix": "eslint src/**/*.js --fix"
+  },
+  "keywords": [
+    "git",
+    "merge",
+    "ai",
+    "conflict-resolution",
+    "ci-cd",
+    "github-actions",
+    "developer-tools"
+  ],
+  "author": "PEACEMAKER Team",
+  "license": "MIT",
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "dependencies": {
+    "commander": "^11.1.0",
+    "simple-git": "^3.22.0",
+    "chalk": "^4.1.2",
+    "ora": "^5.4.1",
+    "inquirer": "^8.2.6",
+    "cli-table3": "^0.6.3",
+    "axios": "^1.6.5",
+    "dotenv": "^16.4.1"
+  },
+  "devDependencies": {
+    "jest": "^29.7.0",
+    "eslint": "^8.56.0",
+    "eslint-config-airbnb-base": "^15.0.0",
+    "eslint-plugin-import": "^2.29.1"
+  }
+}
