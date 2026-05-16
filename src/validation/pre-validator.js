@@ -14,6 +14,11 @@ class PreValidator {
     this.gitOps = gitOps;
     this.syntaxValidator = new SyntaxValidator(gitOps);
     this.timeout = 30000; // 30 seconds max
+    this.cache = {
+      packageJson: null,
+      nodeModulesExists: null,
+      resolvedPaths: new Map(),
+    };
   }
 
   /**
@@ -225,6 +230,9 @@ class PreValidator {
 
     const jsFiles = files.filter((f) => /\.(js|jsx|ts|tsx)$/.test(f));
 
+    // Load package.json for package import validation
+    await this.loadPackageJson();
+
     for (const file of jsFiles) {
       try {
         const content = await this.gitOps.readFile(file);
@@ -232,7 +240,15 @@ class PreValidator {
 
         for (const imp of imports) {
           if (imp.type === 'relative') {
-            const resolved = this.resolveImportPath(file, imp.path);
+            // Check cached resolution first
+            const cacheKey = `${file}:${imp.path}`;
+            let resolved = this.cache.resolvedPaths.get(cacheKey);
+            
+            if (!resolved) {
+              resolved = this.resolveImportPath(file, imp.path);
+              this.cache.resolvedPaths.set(cacheKey, resolved);
+            }
+            
             const exists = await this.fileExists(resolved);
 
             if (!exists) {
@@ -243,6 +259,18 @@ class PreValidator {
                 import: imp.path,
                 line: imp.line,
                 message: `Import path does not exist: ${imp.path}`,
+              });
+            }
+          } else if (imp.type === 'package') {
+            // Validate package imports against package.json
+            const packageName = this.extractPackageName(imp.path);
+            if (!this.isPackageInstalled(packageName)) {
+              result.warnings.push({
+                file,
+                type: 'missing-package',
+                import: imp.path,
+                line: imp.line,
+                message: `Package '${packageName}' not found in package.json dependencies`,
               });
             }
           }
@@ -257,6 +285,54 @@ class PreValidator {
     }
 
     return result;
+  }
+
+  /**
+   * Load package.json for dependency validation
+   */
+  async loadPackageJson() {
+    if (this.cache.packageJson !== null) {
+      return this.cache.packageJson;
+    }
+
+    try {
+      const content = await this.gitOps.readFile('package.json');
+      this.cache.packageJson = JSON.parse(content);
+    } catch (error) {
+      this.cache.packageJson = false;
+    }
+
+    return this.cache.packageJson;
+  }
+
+  /**
+   * Extract package name from import path
+   */
+  extractPackageName(importPath) {
+    // Handle scoped packages (@org/package)
+    if (importPath.startsWith('@')) {
+      const parts = importPath.split('/');
+      return parts.length >= 2 ? `${parts[0]}/${parts[1]}` : importPath;
+    }
+    
+    // Handle regular packages (package/subpath)
+    return importPath.split('/')[0];
+  }
+
+  /**
+   * Check if package is installed
+   */
+  isPackageInstalled(packageName) {
+    if (!this.cache.packageJson) {
+      return true; // Skip check if no package.json
+    }
+
+    const pkg = this.cache.packageJson;
+    return !!(
+      (pkg.dependencies && pkg.dependencies[packageName]) ||
+      (pkg.devDependencies && pkg.devDependencies[packageName]) ||
+      (pkg.peerDependencies && pkg.peerDependencies[packageName])
+    );
   }
 
   /**
@@ -292,7 +368,7 @@ class PreValidator {
   }
 
   /**
-   * Validate dependency existence
+   * Validate dependency existence and compatibility
    */
   async validateDependencies(files) {
     const result = { passed: true, errors: [], warnings: [] };
@@ -312,6 +388,7 @@ class PreValidator {
         };
 
         for (const [dep, version] of Object.entries(allDeps)) {
+          // Check if dependency exists
           try {
             require.resolve(dep);
           } catch (error) {
@@ -323,7 +400,54 @@ class PreValidator {
               message: `Dependency ${dep}@${version} may not be installed`,
             });
           }
+
+          // Validate version format
+          if (!this.isValidVersionFormat(version)) {
+            result.warnings.push({
+              file,
+              type: 'invalid-version-format',
+              package: dep,
+              version,
+              message: `Invalid version format for ${dep}: ${version}`,
+            });
+          }
         }
+
+        // Check for peer dependency conflicts
+        if (pkg.peerDependencies) {
+          for (const [peer, peerVersion] of Object.entries(pkg.peerDependencies)) {
+            if (allDeps[peer]) {
+              const installedVersion = allDeps[peer];
+              if (!this.versionsCompatible(installedVersion, peerVersion)) {
+                result.warnings.push({
+                  file,
+                  type: 'peer-dependency-mismatch',
+                  package: peer,
+                  installed: installedVersion,
+                  required: peerVersion,
+                  message: `Peer dependency ${peer} version mismatch: installed ${installedVersion}, required ${peerVersion}`,
+                });
+              }
+            }
+          }
+        }
+
+        // Check for duplicate dependencies
+        if (pkg.dependencies && pkg.devDependencies) {
+          const duplicates = Object.keys(pkg.dependencies).filter(
+            (dep) => pkg.devDependencies[dep]
+          );
+          
+          if (duplicates.length > 0) {
+            result.warnings.push({
+              file,
+              type: 'duplicate-dependencies',
+              packages: duplicates,
+              message: `Packages listed in both dependencies and devDependencies: ${duplicates.join(', ')}`,
+            });
+          }
+        }
+
       } catch (error) {
         result.warnings.push({
           file,
@@ -334,6 +458,46 @@ class PreValidator {
     }
 
     return result;
+  }
+
+  /**
+   * Validate version format
+   */
+  isValidVersionFormat(version) {
+    // Allow common version formats: ^1.0.0, ~1.0.0, >=1.0.0, 1.0.0, *, latest, etc.
+    const validPatterns = [
+      /^\d+\.\d+\.\d+$/,           // 1.0.0
+      /^[\^~>=<]+\d+\.\d+\.\d+$/,  // ^1.0.0, ~1.0.0, >=1.0.0
+      /^\*$/,                       // *
+      /^latest$/,                   // latest
+      /^next$/,                     // next
+      /^file:/,                     // file:../path
+      /^git\+/,                     // git+https://...
+      /^https?:/,                   // https://...
+    ];
+
+    return validPatterns.some((pattern) => pattern.test(version));
+  }
+
+  /**
+   * Check if versions are compatible (basic check)
+   */
+  versionsCompatible(installed, required) {
+    // Remove version prefixes for comparison
+    const cleanInstalled = installed.replace(/^[\^~>=<]+/, '');
+    const cleanRequired = required.replace(/^[\^~>=<]+/, '');
+
+    // If either is *, latest, or next, consider compatible
+    if (['*', 'latest', 'next'].includes(cleanInstalled) ||
+        ['*', 'latest', 'next'].includes(cleanRequired)) {
+      return true;
+    }
+
+    // Basic semver major version check
+    const installedMajor = cleanInstalled.split('.')[0];
+    const requiredMajor = cleanRequired.split('.')[0];
+
+    return installedMajor === requiredMajor;
   }
 
   /**
