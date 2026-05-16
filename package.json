@@ -8,6 +8,7 @@
   },
   "scripts": {
     "start": "node bin/peacemaker.js",
+    "peacemaker": "node bin/peacemaker.js",
     "dev": "node --watch bin/peacemaker.js",
     "test": "jest",
     "test:watch": "jest --watch",
