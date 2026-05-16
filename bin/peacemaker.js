@@ -54,7 +54,7 @@ program
 // Init command
 program
   .command('init')
-  .description('Set up Peacemaker CI/CD integration in your repository')
+  .description('Set up Peacemaker configuration in your repository')
   .option('-y, --yes', 'Skip confirmation prompts')
   .option('--verbose', 'Show detailed error messages')
   .action(initCommand);

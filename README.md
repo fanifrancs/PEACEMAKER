@@ -19,7 +19,6 @@ Transform risky merges into guided integration workflows with AI-powered conflic
 - [Commands](#commands)
 - [Workflow](#workflow)
 - [Configuration](#configuration)
-- [GitHub Actions Integration](#github-actions-integration)
 - [Examples](#examples)
 - [Architecture](#architecture)
 - [Contributing](#contributing)
@@ -29,23 +28,22 @@ Transform risky merges into guided integration workflows with AI-powered conflic
 
 ## 🎯 Overview
 
-PEACEMAKER is a CLI tool that sits between PR creation and CI execution, providing:
+PEACEMAKER is a CLI tool that provides intelligent merge guidance before you integrate branches, offering:
 
 - **AI-Powered Conflict Resolution** - Intelligent suggestions for resolving merge conflicts
 - **Import Path Reconciliation** - Automatic detection and fixing of broken imports
 - **Dependency Compatibility Checking** - Version conflict detection and resolution
-- **Pre-Validation** - Syntax, import, and dependency validation before CI
+- **Pre-Validation** - Syntax, import, and dependency validation before merge
 - **Patch Generation & Application** - Safe, reviewable code changes
-- **GitHub Actions Integration** - Automated PR analysis and commenting
 
 ### The Complete Value Proposition
 
 ```
 Traditional PR Flow:
-PR opened → Hope for the best → CI fails → Manual debugging → Retry loop
+PR opened → Hope for the best → Tests fail → Manual debugging → Retry loop
 
 PEACEMAKER-Enhanced Flow:
-PR opened → Peacemaker analyzes → AI guides integration → Pre-validates → CI runs clean → Merge
+PR opened → Peacemaker analyzes → AI guides integration → Pre-validates → Tests run clean → Merge
 ```
 
 ---
@@ -56,34 +54,33 @@ Standard Git merges work at the text level, comparing lines and leaving conflict
 
 - **Manual conflict resolution** that's slow and error-prone
 - **Broken imports** after file moves or renames
-- **Dependency conflicts** that aren't caught until CI
+- **Dependency conflicts** that aren't caught until testing
 - **Syntax errors** introduced during merge resolution
-- **Wasted CI time** on preventable failures
+- **Wasted time** on preventable failures
 
 ---
 
 ## 🛠️ How Peacemaker Works
 
-### The 13-Step Workflow
+### The Workflow
 
 1. **Developer Creates Feature Branch** - Standard Git workflow
 2. **Developer Builds Feature** - Commits and pushes changes
-3. **Pull Request Opened** - GitHub emits `pull_request.opened`
-4. **GitHub Action Triggers Peacemaker** - Automated workflow
-5. **Peacemaker Fetches Both Branches** - Gets feature and target branches
-6. **Find Divergence Point** - Uses `git merge-base` to find fork point
-7. **Simulate Merge** - Runs `git merge --no-commit` to detect conflicts
-8. **AI-Assisted Merge Guidance Layer** - **CORE DIFFERENTIATOR**
+3. **Before Merging** - Run Peacemaker analysis
+4. **Peacemaker Fetches Both Branches** - Gets feature and target branches
+5. **Find Divergence Point** - Uses `git merge-base` to find fork point
+6. **Simulate Merge** - Runs `git merge --no-commit` to detect conflicts
+7. **AI-Assisted Merge Guidance Layer** - **CORE DIFFERENTIATOR**
    - Conflict Resolution Analyzer
    - Import Path Reconciler
    - Syntax Validator
    - Structural Adjustment Advisor
    - Dependency Compatibility Checker
-9. **AI Pre-Validation Step** - Lightweight validation before CI
-10. **Summary + Approval Layer** - Interactive review and approval
-11. **Cleaned Branch Output** - Patch generation and application
-12. **CI Runs Normally** - Standard CI pipeline
-13. **PR Review + Merge** - Standard GitHub workflow
+8. **AI Pre-Validation Step** - Lightweight validation before merge
+9. **Summary + Approval Layer** - Interactive review and approval
+10. **Cleaned Branch Output** - Patch generation and application
+11. **Tests Run** - Standard testing pipeline
+12. **PR Review + Merge** - Standard Git workflow
 
 ### Merge Tiers
 
@@ -103,76 +100,63 @@ Peacemaker classifies every merge:
 - Git >= 2.0.0
 - IBM Bob API key (for AI features)
 
-### Quick Setup (Recommended)
+### Global Installation (Recommended)
 
-Install Peacemaker in your project - it will automatically set up CI/CD integration:
-
-```bash
-npm install --save-dev peacemaker
-```
-
-That's it! The postinstall script will automatically create:
-- `.github/workflows/peacemaker.yml` - GitHub Actions workflow
-- `.peacemakerrc.json` - Configuration file
-
-### Manual Setup
-
-If you prefer manual setup or need to reconfigure:
-
-```bash
-npm install --save-dev peacemaker
-npx peacemaker init
-```
-
-### Global Installation
-
-For CLI usage across multiple projects:
+Install Peacemaker globally to use across all your projects:
 
 ```bash
 npm install -g peacemaker
+```
+
+### Local Installation
+
+Install in a specific project:
+
+```bash
+npm install --save-dev peacemaker
+```
+
+### Initial Setup
+
+After installation, initialize Peacemaker in your project:
+
+```bash
+npx peacemaker init
+```
+
+This creates a `.peacemakerrc.json` configuration file in your project.
+
+### Environment Variables
+
+Set up your IBM Bob API credentials:
+
+```bash
+# Add to your shell profile (.bashrc, .zshrc, etc.) or .env file
+export IBM_BOB_API_KEY=your_api_key_here
+export IBM_BOB_API_URL=https://api.ibm.com/bob/v1
 ```
 
 ---
 
 ## 🚀 Quick Start
 
-### For CI/CD Integration
-
-1. **Install Peacemaker** (automatic setup):
-   ```bash
-   npm install --save-dev peacemaker
-   ```
-
-2. **Add GitHub Secrets** to your repository:
-   - Go to Settings → Secrets and variables → Actions
-   - Add `IBM_BOB_API_KEY` and `IBM_BOB_API_URL`
-
-3. **Commit and push** the generated files:
-   ```bash
-   git add .github/workflows/peacemaker.yml .peacemakerrc.json
-   git commit -m "Add Peacemaker CI/CD integration"
-   git push
-   ```
-
-4. **Open a pull request** - Peacemaker will automatically analyze it!
-
-### For Local Development
+### Basic Workflow
 
 1. **Analyze a Branch**:
    ```bash
-   npx peacemaker analyze feature-branch --target main
+   peacemaker analyze feature-branch --target main
    ```
    
    **Note:** Peacemaker automatically detects if your repo is a fork and uses `upstream/main` instead of `origin/main` for accurate analysis.
 
 2. **Get AI Guidance**:
    ```bash
-   npx peacemaker resolve feature-branch --target main
+   peacemaker resolve feature-branch --target main
    ```
 
 3. **Apply Patches**:
    ```bash
-   npx peacemaker apply --commit
+   peacemaker apply --commit
    ```
 
 ### Working with Forks
@@ -185,11 +169,11 @@ git remote add upstream https://github.com/original-repo/project.git
 git fetch upstream
 
 # Now analyze against upstream (automatic detection)
-npx peacemaker analyze feature-branch --target main
+peacemaker analyze feature-branch --target main
 # → Analyzes against upstream/main ✅
 
 # Or explicitly specify
-npx peacemaker analyze feature-branch --target upstream/main
+peacemaker analyze feature-branch --target upstream/main
 ```
 
 ---
@@ -202,7 +186,7 @@ Analyze a branch for merge conflicts and divergence.
 
 **Options:**
 - `-t, --target <branch>` - Target branch to merge into (default: "main")
-- `--ci` - Run in CI mode (non-interactive)
+- `--ci` - Run in non-interactive mode
 - `-o, --output <format>` - Output format: text|json (default: "text")
 
 **Examples:**
@@ -214,7 +198,7 @@ peacemaker analyze
 # Analyze specific branch
 peacemaker analyze feature/new-api --target develop
 
-# CI mode with JSON output
+# Non-interactive mode with JSON output
 peacemaker analyze --ci --output json
 ```
 
@@ -236,7 +220,7 @@ Get AI-powered suggestions for resolving merge conflicts.
 - `--auto-apply` - Automatically apply high-confidence suggestions
 - `--skip-validation` - Skip syntax validation
 - `--validation-level <level>` - Validation level: basic|strict (default: "basic")
-- `--ci` - Run in CI mode (non-interactive)
+- `--ci` - Run in non-interactive mode
 - `-o, --output <format>` - Output format: text|json (default: "text")
 
 **Examples:**
@@ -268,7 +252,7 @@ peacemaker resolve --validation-level strict
 
 ### `peacemaker init`
 
-Set up Peacemaker CI/CD integration in your repository.
+Set up Peacemaker configuration in your repository.
 
 **Options:**
 - `-y, --yes` - Skip confirmation prompts
@@ -278,16 +262,15 @@ Set up Peacemaker CI/CD integration in your repository.
 
 ```bash
 # Interactive setup
-npx peacemaker init
+peacemaker init
 
 # Skip confirmations
-npx peacemaker init --yes
+peacemaker init --yes
 ```
 
 **What it does:**
-- Creates `.github/workflows/peacemaker.yml` - GitHub Actions workflow
 - Creates `.peacemakerrc.json` - Configuration file
-- Provides setup instructions for GitHub secrets
+- Provides setup instructions for environment variables
 
 ---
 
@@ -352,16 +335,6 @@ peacemaker apply --commit
 git push origin feature/new-feature
 ```
 
-### CI/CD Workflow
-
-```bash
-# Automated in GitHub Actions
-peacemaker resolve ${{ github.head_ref }} \
-  --target ${{ github.base_ref }} \
-  --ci \
-  --output json
-```
-
 ---
 
 ## ⚙️ Configuration
@@ -380,7 +353,7 @@ PEACEMAKER_TIMEOUT=30000    # Validation timeout in ms
 
 ### Project Configuration
 
-The `.peacemakerrc.json` file is automatically created during installation. You can customize it:
+The `.peacemakerrc.json` file is automatically created during initialization. You can customize it:
 
 ```json
 {
@@ -397,87 +370,6 @@ The `.peacemakerrc.json` file is automatically created during installation. You 
   ]
 }
 ```
-
----
-
-## 🤖 GitHub Actions Integration
-
-### Automatic Setup
-
-When you install Peacemaker, it automatically creates the GitHub Actions workflow:
-
-```bash
-npm install --save-dev peacemaker
-```
-
-This creates `.github/workflows/peacemaker.yml` with a complete CI/CD configuration.
-
-### Manual Setup
-
-If you need to reconfigure or set up manually:
-
-```bash
-npx peacemaker init
-```
-
-### Required GitHub Secrets
-
-Add these secrets to your repository (Settings → Secrets and variables → Actions):
-- `IBM_BOB_API_KEY` - Your IBM Bob API key
-- `IBM_BOB_API_URL` - Your IBM Bob API URL
-
-### Workflow Configuration
-
-The auto-generated workflow file (`.github/workflows/peacemaker.yml`):
-
-```yaml
-name: Peacemaker Analysis
-
-on:
-  pull_request:
-    types: [opened, synchronize, reopened]
-    branches: [main, develop]
-
-permissions:
-  contents: read
-  pull-requests: write
-
-jobs:
-  analyze:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-          
-      - uses: actions/setup-node@v4
-        with:
-          node-version: '18'
-          
-      - run: npm ci
-      
-      - name: Run Peacemaker
-        env:
-          IBM_BOB_API_KEY: ${{ secrets.IBM_BOB_API_KEY }}
-          IBM_BOB_API_URL: ${{ secrets.IBM_BOB_API_URL }}
-        run: |
-          npm run peacemaker -- resolve ${{ github.head_ref }} \
-            --target ${{ github.base_ref }} \
-            --ci \
-            --output json > peacemaker-report.json
-```
-
-### PR Comments
-
-Peacemaker automatically posts detailed analysis comments on PRs:
-
-- Overall status (✅ Passed / ❌ Failed)
-- Validation summary
-- AI guidance recommendations
-- Conflict resolutions
-- Import fixes
-- Dependency updates
-- Next steps
 
 ---
 
@@ -555,7 +447,8 @@ peacemaker/
 │   ├── commands/              # CLI commands
 │   │   ├── analyze.js         # Branch analysis
 │   │   ├── resolve.js         # AI guidance
-│   │   └── apply.js           # Patch application
+│   │   ├── apply.js           # Patch application
+│   │   └── init.js            # Configuration setup
 │   ├── ai/                    # AI services
 │   │   ├── ibm-bob-client.js  # API client
 │   │   ├── intent-extractor.js
@@ -582,11 +475,8 @@ peacemaker/
 │       ├── logger.js
 │       ├── spinner.js
 │       └── config.js
-└── .github/
-    ├── workflows/
-    │   └── peacemaker.yml     # GitHub Actions
-    └── scripts/
-        └── format-comment.js  # PR comments
+└── scripts/
+    └── postinstall.js         # Setup script
 ```
 
 ### Data Flow

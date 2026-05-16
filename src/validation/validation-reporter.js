@@ -223,10 +223,10 @@ class ValidationReporter {
 
     if (results.passed) {
       console.log(chalk.green('✓ Pre-validation passed'));
-      console.log(chalk.gray('The code is ready for CI pipeline'));
+      console.log(chalk.gray('The code is ready for merge'));
     } else {
       console.log(chalk.red('✗ Pre-validation failed'));
-      console.log(chalk.gray('Fix the errors above before proceeding to CI'));
+      console.log(chalk.gray('Fix the errors above before proceeding'));
       
       if (results.summary.errorsFound > 0) {
         console.log(chalk.yellow(`\n${results.summary.errorsFound} error(s) must be fixed`));
@@ -291,9 +291,9 @@ class ValidationReporter {
     // Recommendation
     md += '## Recommendation\n\n';
     if (results.passed) {
-      md += '✅ Pre-validation passed. The code is ready for CI pipeline.\n';
+      md += '✅ Pre-validation passed. The code is ready for merge.\n';
     } else {
-      md += '❌ Pre-validation failed. Fix the errors above before proceeding to CI.\n';
+      md += '❌ Pre-validation failed. Fix the errors above before proceeding.\n';
     }
 
     return md;

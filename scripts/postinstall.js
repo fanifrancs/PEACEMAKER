@@ -2,207 +2,12 @@
 
 /**
  * Postinstall Script
- * Automatically sets up Peacemaker CI/CD integration after npm install
+ * Creates default configuration file for Peacemaker
  */
 
 const fs = require('fs').promises;
 const path = require('path');
 const chalk = require('chalk');
-
-const WORKFLOW_TEMPLATE = `name: Peacemaker Analysis
-
-on:
-  pull_request:
-    types: [opened, synchronize, reopened]
-    branches:
-      - main
-      - develop
-
-permissions:
-  contents: read
-  pull-requests: write
-  issues: write
-
-jobs:
-  analyze:
-    name: Analyze PR with Peacemaker
-    runs-on: ubuntu-latest
-    environment: peacemaker
-    
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-          
-      - name: Fetch target branch
-        run: |
-          git fetch origin \${{ github.base_ref }}:\${{ github.base_ref }}
-          
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '18'
-          cache: 'npm'
-          
-      - name: Install dependencies
-        run: npm ci
-      
-      - name: Validate Secrets
-        run: |
-          if [ -z "\${{ secrets.IBM_BOB_API_KEY }}" ]; then
-            echo "❌ Error: IBM_BOB_API_KEY is not set"
-            echo "Please add IBM_BOB_API_KEY to the 'peacemaker' environment secrets"
-            exit 1
-          fi
-          if [ -z "\${{ secrets.IBM_BOB_API_URL }}" ]; then
-            echo "❌ Error: IBM_BOB_API_URL is not set"
-            echo "Please add IBM_BOB_API_URL to the 'peacemaker' environment secrets"
-            exit 1
-          fi
-          echo "✅ Secrets validated successfully"
-        
-      - name: Run Peacemaker Analysis
-        id: peacemaker
-        env:
-          IBM_BOB_API_KEY: \${{ secrets.IBM_BOB_API_KEY }}
-          IBM_BOB_API_URL: \${{ secrets.IBM_BOB_API_URL }}
-        run: |
-          npx peacemaker resolve \${{ github.head_ref }} \\
-            --target \${{ github.base_ref }} \\
-            --ci \\
-            --output json > peacemaker-report.json || {
-            echo "❌ Peacemaker analysis failed"
-            echo '{"error": "Analysis failed", "validation": {"passed": false}}' > peacemaker-report.json
-          }
-          
-          # Validate JSON output
-          if ! jq empty peacemaker-report.json 2>/dev/null; then
-            echo "❌ Invalid JSON output, creating error report"
-            echo '{"error": "Invalid JSON output", "validation": {"passed": false}}' > peacemaker-report.json
-          fi
-          
-      - name: Generate PR Comment
-        if: always()
-        uses: actions/github-script@v7
-        with:
-          script: |
-            const fs = require('fs');
-            let report;
-            try {
-              const reportData = fs.readFileSync('peacemaker-report.json', 'utf8');
-              report = JSON.parse(reportData);
-            } catch (error) {
-              console.error('Failed to read report:', error);
-              report = {
-                error: 'Failed to generate report',
-                validation: { passed: false }
-              };
-            }
-            
-            const formatComment = (report) => {
-              if (report.error) {
-                return \`## ⚔️ PEACEMAKER ANALYSIS\\n\\n❌ **Error:** \${report.error}\\n\\nPlease check the workflow logs for details.\`;
-              }
-              
-              const status = report.validation?.passed ? '✅ Passed' : '❌ Failed';
-              const conflicts = report.conflicts?.length || 0;
-              const importIssues = report.importIssues?.length || 0;
-              const dependencyIssues = report.dependencyIssues?.length || 0;
-              
-              let comment = \`## ⚔️ PEACEMAKER ANALYSIS\\n\\n\`;
-              comment += \`**Status:** \${status}\\n\\n\`;
-              comment += \`### Summary\\n\`;
-              comment += \`- **Conflicts:** \${conflicts}\\n\`;
-              comment += \`- **Import Issues:** \${importIssues}\\n\`;
-              comment += \`- **Dependency Issues:** \${dependencyIssues}\\n\\n\`;
-              
-              if (report.guidance?.summary) {
-                comment += \`### AI Guidance\\n\${report.guidance.summary}\\n\\n\`;
-              }
-              
-              comment += \`---\\n*Analyzed by Peacemaker*\`;
-              return comment;
-            };
-            
-            const comment = formatComment(report);
-            const { data: comments } = await github.rest.issues.listComments({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              issue_number: context.issue.number,
-            });
-            
-            const botComment = comments.find(comment => 
-              comment.user.type === 'Bot' && 
-              comment.body.includes('⚔️ PEACEMAKER ANALYSIS')
-            );
-            
-            if (botComment) {
-              await github.rest.issues.updateComment({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                comment_id: botComment.id,
-                body: comment
-              });
-            } else {
-              await github.rest.issues.createComment({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                issue_number: context.issue.number,
-                body: comment
-              });
-            }
-            
-      - name: Set Status Check
-        if: always()
-        uses: actions/github-script@v7
-        with:
-          script: |
-            const fs = require('fs');
-            let report;
-            try {
-              const reportData = fs.readFileSync('peacemaker-report.json', 'utf8');
-              report = JSON.parse(reportData);
-            } catch (error) {
-              console.error('Failed to read report:', error);
-              return;
-            }
-            
-            const validation = report.validation || {};
-            const guidance = report.guidance || {};
-            
-            let state = 'success';
-            let description = 'Peacemaker analysis passed';
-            
-            if (!validation.passed) {
-              state = 'failure';
-              description = \`Pre-validation failed: \${validation.summary?.errorsFound || 0} errors found\`;
-            } else if (guidance.recommendedAction?.priority === 'critical') {
-              state = 'failure';
-              description = 'Critical issues detected - manual review required';
-            } else if (guidance.recommendedAction?.priority === 'high') {
-              state = 'pending';
-              description = 'High-priority issues detected - review recommended';
-            }
-            
-            await github.rest.repos.createCommitStatus({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              sha: context.payload.pull_request.head.sha,
-              state: state,
-              target_url: \`https://github.com/\${context.repo.owner}/\${context.repo.repo}/actions/runs/\${context.runId}\`,
-              description: description,
-              context: 'Peacemaker Analysis'
-            });
-            
-      - name: Upload Report Artifact
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: peacemaker-report
-          path: peacemaker-report.json
-          retention-days: 30
-`;
 
 const CONFIG_TEMPLATE = `{
   "validationLevel": "basic",
@@ -230,60 +35,38 @@ async function postinstall() {
       return;
     }
 
-    // Check if workflow already exists
-    const workflowPath = path.join(process.cwd(), '.github', 'workflows', 'peacemaker.yml');
+    // Check if config already exists
     const configPath = path.join(process.cwd(), '.peacemakerrc.json');
     
-    let workflowExists = false;
     let configExists = false;
-    
-    try {
-      await fs.access(workflowPath);
-      workflowExists = true;
-    } catch (e) { /* File doesn't exist */ }
     
     try {
       await fs.access(configPath);
       configExists = true;
     } catch (e) { /* File doesn't exist */ }
 
-    if (workflowExists && configExists) {
+    if (configExists) {
       // Already set up, skip
       return;
     }
 
-    console.log(chalk.cyan('\n⚔️  Setting up Peacemaker CI/CD integration...\n'));
+    console.log(chalk.cyan('\n⚔️  Setting up Peacemaker configuration...\n'));
 
-    // Create .github/workflows directory
-    const workflowDir = path.join(process.cwd(), '.github', 'workflows');
-    await fs.mkdir(workflowDir, { recursive: true });
-
-    // Write workflow file if it doesn't exist
-    if (!workflowExists) {
-      await fs.writeFile(workflowPath, WORKFLOW_TEMPLATE, 'utf8');
-      console.log(chalk.green('✓ Created .github/workflows/peacemaker.yml'));
-    }
-
-    // Write config file if it doesn't exist
-    if (!configExists) {
-      await fs.writeFile(configPath, CONFIG_TEMPLATE, 'utf8');
-      console.log(chalk.green('✓ Created .peacemakerrc.json'));
-    }
+    // Write config file
+    await fs.writeFile(configPath, CONFIG_TEMPLATE, 'utf8');
+    console.log(chalk.green('✓ Created .peacemakerrc.json'));
 
     console.log(chalk.bold.green('\n✅ Peacemaker setup complete!\n'));
-    console.log(chalk.bold('Next steps:\n'));
-    console.log('1. Create GitHub Environment and add secrets:');
-    console.log(chalk.gray('   a. Go to: Settings → Environments'));
-    console.log(chalk.gray('   b. Click "New environment"'));
-    console.log(chalk.gray('   c. Name it: "peacemaker" (exactly as shown)'));
-    console.log(chalk.gray('   d. Add these secrets to the environment:'));
-    console.log(chalk.cyan('      - IBM_BOB_API_KEY'));
-    console.log(chalk.cyan('      - IBM_BOB_API_URL\n'));
-    console.log('2. Commit the new files:');
-    console.log(chalk.gray('   git add .github/workflows/peacemaker.yml .peacemakerrc.json'));
-    console.log(chalk.gray('   git commit -m "Add Peacemaker CI/CD integration"'));
-    console.log(chalk.gray('   git push\n'));
-    console.log('3. Open a pull request to test the integration!\n');
+    console.log(chalk.bold('Usage:\n'));
+    console.log('1. Set up your environment variables:');
+    console.log(chalk.cyan('   IBM_BOB_API_KEY=your_api_key'));
+    console.log(chalk.cyan('   IBM_BOB_API_URL=your_api_url\n'));
+    console.log('2. Analyze your branch:');
+    console.log(chalk.gray('   npx peacemaker analyze feature-branch --target main\n'));
+    console.log('3. Get AI guidance:');
+    console.log(chalk.gray('   npx peacemaker resolve feature-branch --target main\n'));
+    console.log('4. Apply patches:');
+    console.log(chalk.gray('   npx peacemaker apply --commit\n'));
     console.log(chalk.dim('Run "npx peacemaker init" to reconfigure anytime.\n'));
 
   } catch (error) {
