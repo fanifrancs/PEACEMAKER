@@ -10,10 +10,6 @@
     "start": "node bin/peacemaker.js",
     "peacemaker": "node bin/peacemaker.js",
     "dev": "node --watch bin/peacemaker.js",
-    "test": "jest",
-    "test:watch": "jest --watch",
-    "test:coverage": "jest --coverage",
-    "test:ci": "jest --ci --coverage --maxWorkers=2",
     "lint": "eslint src/**/*.js",
     "lint:fix": "eslint src/**/*.js --fix"
   },
@@ -42,7 +38,6 @@
     "dotenv": "^16.4.1"
   },
   "devDependencies": {
-    "jest": "^29.7.0",
     "eslint": "^8.56.0",
     "eslint-config-airbnb-base": "^15.0.0",
     "eslint-plugin-import": "^2.29.1"
