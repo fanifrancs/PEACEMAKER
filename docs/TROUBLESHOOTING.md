@@ -1,3 +1,5 @@
+> **Note**: As of the latest version, Peacemaker focuses on local workflow only. GitHub Actions integration has been removed. This guide has been updated to reflect the local-only workflow.
+
 # Troubleshooting Guide
 
 Common issues and solutions for PEACEMAKER.
@@ -10,7 +12,6 @@ Common issues and solutions for PEACEMAKER.
 - [AI Service Errors](#ai-service-errors)
 - [Validation Errors](#validation-errors)
 - [Patch Application Issues](#patch-application-issues)
-- [GitHub Actions Issues](#github-actions-issues)
 - [Performance Issues](#performance-issues)
 
 ---
@@ -490,89 +491,6 @@ Error: No conflict markers found in src/app.js
    ```
 
 ---
-
-## GitHub Actions Issues
-
-### Error: `Workflow not triggered`
-
-**Symptoms:**
-- PR opened but no Peacemaker comment
-
-**Solutions:**
-
-1. **Check workflow file:**
-   ```bash
-   cat .github/workflows/peacemaker.yml
-   ```
-
-2. **Verify triggers:**
-   ```yaml
-   on:
-     pull_request:
-       types: [opened, synchronize, reopened]
-   ```
-
-3. **Check Actions tab:**
-   - Go to repository → Actions
-   - Look for failed runs
-   - Check error logs
-
-4. **Verify permissions:**
-   ```yaml
-   permissions:
-     contents: read
-     pull-requests: write
-   ```
-
-### Error: `Secrets not found`
-
-**Symptoms:**
-```
-Error: IBM_BOB_API_KEY is not set
-```
-
-**Solutions:**
-
-1. **Add repository secrets:**
-   - Go to Settings → Secrets and variables → Actions
-   - Add `IBM_BOB_API_KEY`
-   - Add `IBM_BOB_API_URL`
-
-2. **Verify secret names:**
-   ```yaml
-   env:
-     IBM_BOB_API_KEY: ${{ secrets.IBM_BOB_API_KEY }}
-   ```
-
-3. **Check secret access:**
-   - Secrets must be added to repository
-   - Not available in forked PRs (security)
-
-### Error: `Comment not posted`
-
-**Symptoms:**
-- Workflow runs successfully
-- No comment on PR
-
-**Solutions:**
-
-1. **Check permissions:**
-   ```yaml
-   permissions:
-     pull-requests: write
-   ```
-
-2. **Verify GitHub token:**
-   ```yaml
-   - uses: actions/github-script@v7
-     with:
-       github-token: ${{ secrets.GITHUB_TOKEN }}
-   ```
-
-3. **Check comment script:**
-   ```bash
-   cat .github/scripts/format-comment.js
-   ```
 
 ---
 

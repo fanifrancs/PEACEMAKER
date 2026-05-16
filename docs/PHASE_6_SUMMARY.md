@@ -1,3 +1,5 @@
+> **Note**: This document describes Phase 6 testing implementation. As of the latest version, Peacemaker focuses on local workflow only. References to CI/CD integration in this document reflect the original implementation plan.
+
 # Phase 6: Testing & Documentation - Completion Summary
 
 **Status:** ✅ COMPLETE  

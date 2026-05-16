@@ -1,3 +1,5 @@
+> **Note**: This document describes the original implementation plan including GitHub Actions integration. As of the latest version, Peacemaker focuses on local workflow only. GitHub Actions integration (Phase 4/5) has been removed from the current implementation.
+
 # 🚀 PEACEMAKER - Implementation Plan
 
 **AI-Assisted Merge Guidance for Git Workflows**

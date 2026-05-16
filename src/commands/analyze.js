@@ -125,7 +125,7 @@ async function analyzeCommand(branch, options) {
     if (options.ci) {
       // In CI mode, exit with appropriate code
       if (classification.tier === 3) {
-        process.exit(1); // Fail CI for complex merges
+        process.exit(1); // Exit with error for complex merges
       }
       process.exit(0);
     }

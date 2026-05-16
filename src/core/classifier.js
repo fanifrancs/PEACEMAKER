@@ -186,7 +186,7 @@ class TierClassifier {
         steps: [
           'Review changes briefly',
           'Merge directly into target branch',
-          'Run CI tests',
+          'Run tests',
         ],
       },
       2: {
@@ -198,7 +198,7 @@ class TierClassifier {
           'Review AI suggestions',
           'Apply approved resolutions',
           'Validate with pre-checks',
-          'Run CI tests',
+          'Run tests',
         ],
       },
       3: {
