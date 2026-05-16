@@ -100,7 +100,7 @@ Peacemaker classifies every merge:
 - Git >= 2.0.0
 - IBM Bob API key (for AI features)
 
-### Global Installation (Recommended)
+### Global Installation
 
 Install Peacemaker globally to use across all your projects:
 
@@ -108,20 +108,12 @@ Install Peacemaker globally to use across all your projects:
 npm install -g peacemaker
 ```
 
-### Local Installation
-
-Install in a specific project:
-
-```bash
-npm install --save-dev peacemaker
-```
-
 ### Initial Setup
 
 After installation, initialize Peacemaker in your project:
 
 ```bash
-npx peacemaker init
+peacemaker init
 ```
 
 This creates a `.peacemakerrc.json` configuration file in your project.
