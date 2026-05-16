@@ -51,6 +51,50 @@ class GitOperations {
   }
 
   /**
+   * Get upstream remote name and branch
+   * Detects if repo is a fork and returns upstream info
+   */
+  async getUpstreamBranch(targetBranch = 'main') {
+    try {
+      // Get all remotes
+      const remotes = await this.git.getRemotes(true);
+      
+      // Look for upstream remote (common convention)
+      const upstream = remotes.find(r => r.name === 'upstream');
+      
+      if (upstream) {
+        // Check if upstream branch exists
+        try {
+          await this.git.raw(['rev-parse', '--verify', `upstream/${targetBranch}`]);
+          logger.debug(`Found upstream branch: upstream/${targetBranch}`);
+          return `upstream/${targetBranch}`;
+        } catch (error) {
+          logger.debug(`Upstream remote exists but upstream/${targetBranch} not found`);
+        }
+      }
+      
+      // Fallback to origin
+      const origin = remotes.find(r => r.name === 'origin');
+      if (origin) {
+        try {
+          await this.git.raw(['rev-parse', '--verify', `origin/${targetBranch}`]);
+          logger.debug(`Using origin branch: origin/${targetBranch}`);
+          return `origin/${targetBranch}`;
+        } catch (error) {
+          logger.debug(`origin/${targetBranch} not found`);
+        }
+      }
+      
+      // Last resort: use local branch
+      logger.debug(`Using local branch: ${targetBranch}`);
+      return targetBranch;
+    } catch (error) {
+      logger.error('Failed to get upstream branch:', error.message);
+      return targetBranch;
+    }
+  }
+
+  /**
    * Detect fork point (merge-base) between two branches
    * This is Point 6 in the workflow
    */

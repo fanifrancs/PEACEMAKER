@@ -32,9 +32,15 @@ async function analyzeCommand(branch, options) {
 
     // Determine branches
     const sourceBranch = branch || await gitOps.getCurrentBranch();
-    const targetBranch = options.target || 'main';
+    const requestedTarget = options.target || 'main';
+    
+    // Auto-detect upstream branch if available
+    const targetBranch = await gitOps.getUpstreamBranch(requestedTarget);
 
     logger.info(`Analyzing merge: ${sourceBranch} → ${targetBranch}`);
+    if (targetBranch !== requestedTarget) {
+      logger.info(`Using upstream branch: ${targetBranch}`);
+    }
 
     // Check if branches exist
     spinner.start('Validating branches...');
