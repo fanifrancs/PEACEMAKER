@@ -13,6 +13,7 @@ const packageJson = require('../package.json');
 const analyzeCommand = require('../src/commands/analyze');
 const resolveCommand = require('../src/commands/resolve');
 const applyCommand = require('../src/commands/apply');
+const initCommand = require('../src/commands/init');
 
 // Configure CLI
 program
@@ -49,6 +50,14 @@ program
   .option('--dry-run', 'Show what would be applied without making changes')
   .option('--commit', 'Create a git commit after applying patches')
   .action(applyCommand);
+
+// Init command
+program
+  .command('init')
+  .description('Set up Peacemaker CI/CD integration in your repository')
+  .option('-y, --yes', 'Skip confirmation prompts')
+  .option('--verbose', 'Show detailed error messages')
+  .action(initCommand);
 
 // Parse arguments
 program.parse(process.argv);

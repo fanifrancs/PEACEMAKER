@@ -103,57 +103,75 @@ Peacemaker classifies every merge:
 - Git >= 2.0.0
 - IBM Bob API key (for AI features)
 
-### Install from npm
+### Quick Setup (Recommended)
+
+Install Peacemaker in your project - it will automatically set up CI/CD integration:
+
+```bash
+npm install --save-dev peacemaker
+```
+
+That's it! The postinstall script will automatically create:
+- `.github/workflows/peacemaker.yml` - GitHub Actions workflow
+- `.peacemakerrc.json` - Configuration file
+
+### Manual Setup
+
+If you prefer manual setup or need to reconfigure:
+
+```bash
+npm install --save-dev peacemaker
+npx peacemaker init
+```
+
+### Global Installation
+
+For CLI usage across multiple projects:
 
 ```bash
 npm install -g peacemaker
-```
-
-### Install from source
-
-```bash
-git clone https://github.com/fanifrancs/PEACEMAKER.git
-cd PEACEMAKER
-npm install
-npm link
 ```
 
 ---
 
 ## 🚀 Quick Start
 
-### 1. Configure API Key
+### For CI/CD Integration
 
-Create a `.env` file in your project root:
+1. **Install Peacemaker** (automatic setup):
+   ```bash
+   npm install --save-dev peacemaker
+   ```
 
-```bash
-cp .env.example .env
-```
+2. **Add GitHub Secrets** to your repository:
+   - Go to Settings → Secrets and variables → Actions
+   - Add `IBM_BOB_API_KEY` and `IBM_BOB_API_URL`
 
-Add your IBM Bob API credentials:
+3. **Commit and push** the generated files:
+   ```bash
+   git add .github/workflows/peacemaker.yml .peacemakerrc.json
+   git commit -m "Add Peacemaker CI/CD integration"
+   git push
+   ```
 
-```env
-IBM_BOB_API_KEY=your_api_key_here
-IBM_BOB_API_URL=https://api.ibm.com/bob/v1
-```
+4. **Open a pull request** - Peacemaker will automatically analyze it!
 
-### 2. Analyze a Branch
+### For Local Development
 
-```bash
-peacemaker analyze feature-branch --target main
-```
+1. **Analyze a Branch**:
+   ```bash
+   npx peacemaker analyze feature-branch --target main
+   ```
 
-### 3. Get AI Guidance
+2. **Get AI Guidance**:
+   ```bash
+   npx peacemaker resolve feature-branch --target main
+   ```
 
-```bash
-peacemaker resolve feature-branch --target main
-```
-
-### 4. Apply Patches
-
-```bash
-peacemaker apply --commit
-```
+3. **Apply Patches**:
+   ```bash
+   npx peacemaker apply --commit
+   ```
 
 ---
 
@@ -226,6 +244,31 @@ peacemaker resolve --validation-level strict
 - Syntax validation results
 - Interactive approval flow
 - Generated patches saved to `.peacemaker/`
+
+---
+
+### `peacemaker init`
+
+Set up Peacemaker CI/CD integration in your repository.
+
+**Options:**
+- `-y, --yes` - Skip confirmation prompts
+- `--verbose` - Show detailed error messages
+
+**Examples:**
+
+```bash
+# Interactive setup
+npx peacemaker init
+
+# Skip confirmations
+npx peacemaker init --yes
+```
+
+**What it does:**
+- Creates `.github/workflows/peacemaker.yml` - GitHub Actions workflow
+- Creates `.peacemakerrc.json` - Configuration file
+- Provides setup instructions for GitHub secrets
 
 ---
 
@@ -318,7 +361,7 @@ PEACEMAKER_TIMEOUT=30000    # Validation timeout in ms
 
 ### Project Configuration
 
-Create `.peacemakerrc.json` in your project root:
+The `.peacemakerrc.json` file is automatically created during installation. You can customize it:
 
 ```json
 {
@@ -329,7 +372,9 @@ Create `.peacemakerrc.json` in your project root:
   "excludePatterns": [
     "*.md",
     "*.txt",
-    "docs/**"
+    "docs/**",
+    "test/**",
+    "tests/**"
   ]
 }
 ```
@@ -338,13 +383,33 @@ Create `.peacemakerrc.json` in your project root:
 
 ## 🤖 GitHub Actions Integration
 
-### Setup
+### Automatic Setup
 
-1. Add secrets to your repository:
-   - `IBM_BOB_API_KEY`
-   - `IBM_BOB_API_URL`
+When you install Peacemaker, it automatically creates the GitHub Actions workflow:
 
-2. Create `.github/workflows/peacemaker.yml`:
+```bash
+npm install --save-dev peacemaker
+```
+
+This creates `.github/workflows/peacemaker.yml` with a complete CI/CD configuration.
+
+### Manual Setup
+
+If you need to reconfigure or set up manually:
+
+```bash
+npx peacemaker init
+```
+
+### Required GitHub Secrets
+
+Add these secrets to your repository (Settings → Secrets and variables → Actions):
+- `IBM_BOB_API_KEY` - Your IBM Bob API key
+- `IBM_BOB_API_URL` - Your IBM Bob API URL
+
+### Workflow Configuration
+
+The auto-generated workflow file (`.github/workflows/peacemaker.yml`):
 
 ```yaml
 name: Peacemaker Analysis
