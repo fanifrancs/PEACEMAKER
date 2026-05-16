@@ -115,7 +115,13 @@ async function resolveCommand(branch, options) {
       const validationReporter = new ValidationReporter();
       
       try {
-        validationResults = await preValidator.validate(changedFiles, {
+        // Extract array of files from changedFiles object
+        const filesToValidate = Array.from(new Set([
+          ...changedFiles.sourceFiles,
+          ...changedFiles.targetFiles,
+        ]));
+        
+        validationResults = await preValidator.validate(filesToValidate, {
           validationLevel: options.validationLevel || 'basic',
           skipValidation: options.skipValidation,
         });
