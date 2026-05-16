@@ -2,7 +2,7 @@
 
 /**
  * PEACEMAKER CLI Entry Point
- * AI-Assisted Merge Guidance for Git Workflows
+ * AI-Assisted Merge Guidance for Local Git Workflows
  */
 
 const { program } = require('commander');
@@ -18,7 +18,7 @@ const initCommand = require('../src/commands/init');
 // Configure CLI
 program
   .name('peacemaker')
-  .description(chalk.bold('⚔️  PEACEMAKER - AI-Assisted Merge Guidance for Git Workflows'))
+  .description(chalk.bold('⚔️  PEACEMAKER - AI-Assisted Merge Guidance for Local Git Workflows'))
   .version(packageJson.version, '-v, --version', 'Output the current version');
 
 // Analyze command
@@ -26,7 +26,6 @@ program
   .command('analyze [branch]')
   .description('Analyze a branch for merge conflicts and divergence')
   .option('-t, --target <branch>', 'Target branch to merge into', 'main')
-  .option('--ci', 'Run in CI mode (non-interactive)')
   .option('-o, --output <format>', 'Output format (text|json)', 'text')
   .action(analyzeCommand);
 
@@ -38,7 +37,6 @@ program
   .option('--auto-apply', 'Automatically apply high-confidence suggestions')
   .option('--skip-validation', 'Skip syntax validation')
   .option('--validation-level <level>', 'Validation level (basic|strict)', 'basic')
-  .option('--ci', 'Run in CI mode (non-interactive)')
   .option('-o, --output <format>', 'Output format (text|json)', 'text')
   .action(resolveCommand);
 

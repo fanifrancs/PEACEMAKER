@@ -141,12 +141,7 @@ async function resolveCommand(branch, options) {
 
     reporter.displayGuidanceReport(guidance);
 
-    // Interactive approval flow (unless CI mode or auto-apply)
-    if (options.ci) {
-      // CI mode - just output and exit
-      process.exit(guidance.recommendedAction.priority === 'critical' ? 1 : 0);
-    }
-
+    // Interactive approval flow (unless auto-apply)
     if (options.autoApply) {
       // Auto-apply high-confidence suggestions
       await autoApplySuggestions(guidance, spinner);

@@ -121,14 +121,6 @@ async function analyzeCommand(branch, options) {
       reporter.displayAnalysisReport(analysis);
     }
 
-    // Exit code based on tier
-    if (options.ci) {
-      // In CI mode, exit with appropriate code
-      if (classification.tier === 3) {
-        process.exit(1); // Exit with error for complex merges
-      }
-      process.exit(0);
-    }
   } catch (error) {
     spinner.fail('Analysis failed');
     logger.error('Error during analysis:', error.message);

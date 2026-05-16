@@ -1,8 +1,8 @@
 # ⚔️ PEACEMAKER
 
-**AI-Assisted Merge Guidance for Git Workflows**
+**AI-Assisted Merge Guidance for Local Git Workflows**
 
-Transform risky merges into guided integration workflows with AI-powered conflict resolution, import reconciliation, and pre-validation.
+Transform risky merges into guided integration workflows with AI-powered conflict resolution, import reconciliation, and pre-validation - all locally before you commit.
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Node.js Version](https://img.shields.io/badge/node-%3E%3D18.0.0-brightgreen)](https://nodejs.org/)
@@ -39,11 +39,11 @@ PEACEMAKER is a CLI tool that provides intelligent merge guidance before you int
 ### The Complete Value Proposition
 
 ```
-Traditional PR Flow:
-PR opened → Hope for the best → Tests fail → Manual debugging → Retry loop
+Traditional Merge Flow:
+Feature branch → Attempt merge → Conflicts → Manual debugging → Hope it works
 
 PEACEMAKER-Enhanced Flow:
-PR opened → Peacemaker analyzes → AI guides integration → Pre-validates → Tests run clean → Merge
+Feature branch → Peacemaker analyzes → AI guides integration → Pre-validates → Clean merge
 ```
 
 ---
@@ -65,7 +65,7 @@ Standard Git merges work at the text level, comparing lines and leaving conflict
 ### The Workflow
 
 1. **Developer Creates Feature Branch** - Standard Git workflow
-2. **Developer Builds Feature** - Commits and pushes changes
+2. **Developer Builds Feature** - Commits changes locally
 3. **Before Merging** - Run Peacemaker analysis
 4. **Peacemaker Fetches Both Branches** - Gets feature and target branches
 5. **Find Divergence Point** - Uses `git merge-base` to find fork point
@@ -76,11 +76,11 @@ Standard Git merges work at the text level, comparing lines and leaving conflict
    - Syntax Validator
    - Structural Adjustment Advisor
    - Dependency Compatibility Checker
-8. **AI Pre-Validation Step** - Lightweight validation before merge
+8. **AI Pre-Validation Step** - Lightweight validation before commit
 9. **Summary + Approval Layer** - Interactive review and approval
 10. **Cleaned Branch Output** - Patch generation and application
-11. **Tests Run** - Standard testing pipeline
-12. **PR Review + Merge** - Standard Git workflow
+11. **Developer Reviews & Commits** - Standard Git workflow
+12. **Push and Create PR** - Standard GitHub workflow
 
 ### Merge Tiers
 
@@ -186,7 +186,6 @@ Analyze a branch for merge conflicts and divergence.
 
 **Options:**
 - `-t, --target <branch>` - Target branch to merge into (default: "main")
-- `--ci` - Run in non-interactive mode
 - `-o, --output <format>` - Output format: text|json (default: "text")
 
 **Examples:**
@@ -198,8 +197,8 @@ peacemaker analyze
 # Analyze specific branch
 peacemaker analyze feature/new-api --target develop
 
-# Non-interactive mode with JSON output
-peacemaker analyze --ci --output json
+# JSON output for scripting
+peacemaker analyze --output json
 ```
 
 **Output:**
@@ -220,7 +219,6 @@ Get AI-powered suggestions for resolving merge conflicts.
 - `--auto-apply` - Automatically apply high-confidence suggestions
 - `--skip-validation` - Skip syntax validation
 - `--validation-level <level>` - Validation level: basic|strict (default: "basic")
-- `--ci` - Run in non-interactive mode
 - `-o, --output <format>` - Output format: text|json (default: "text")
 
 **Examples:**

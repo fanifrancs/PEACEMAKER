@@ -1,7 +1,7 @@
 {
   "name": "peacemaker",
   "version": "1.0.0",
-  "description": "AI-Assisted Merge Guidance for Git Workflows - Transforms risky merges into guided integration workflows",
+  "description": "AI-Assisted Merge Guidance for Local Git Workflows - Transforms risky merges into guided integration workflows",
   "main": "src/index.js",
   "bin": {
     "peacemaker": "./bin/peacemaker.js"

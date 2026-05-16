@@ -125,11 +125,6 @@ peacemaker/
 │       ├── logger.js
 │       ├── spinner.js
 │       └── config.js
-├── .github/
-│   ├── workflows/
-│   │   └── peacemaker.yml     # GitHub Actions workflow
-│   └── scripts/
-│       └── format-comment.js  # PR comment formatter
 ├── docs/                      # Documentation
 └── tests/                     # Test files (future)
 ```
