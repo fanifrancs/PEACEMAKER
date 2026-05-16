@@ -27,6 +27,7 @@ jobs:
   analyze:
     name: Analyze PR with Peacemaker
     runs-on: ubuntu-latest
+    environment: peacemaker
     
     steps:
       - name: Checkout code
@@ -46,6 +47,20 @@ jobs:
           
       - name: Install dependencies
         run: npm ci
+      
+      - name: Validate Secrets
+        run: |
+          if [ -z "\${{ secrets.IBM_BOB_API_KEY }}" ]; then
+            echo "❌ Error: IBM_BOB_API_KEY is not set"
+            echo "Please add IBM_BOB_API_KEY to the 'peacemaker' environment secrets"
+            exit 1
+          fi
+          if [ -z "\${{ secrets.IBM_BOB_API_URL }}" ]; then
+            echo "❌ Error: IBM_BOB_API_URL is not set"
+            echo "Please add IBM_BOB_API_URL to the 'peacemaker' environment secrets"
+            exit 1
+          fi
+          echo "✅ Secrets validated successfully"
         
       - name: Run Peacemaker Analysis
         id: peacemaker
@@ -56,7 +71,16 @@ jobs:
           npx peacemaker resolve \${{ github.head_ref }} \\
             --target \${{ github.base_ref }} \\
             --ci \\
-            --output json > peacemaker-report.json
+            --output json > peacemaker-report.json || {
+            echo "❌ Peacemaker analysis failed"
+            echo '{"error": "Analysis failed", "validation": {"passed": false}}' > peacemaker-report.json
+          }
+          
+          # Validate JSON output
+          if ! jq empty peacemaker-report.json 2>/dev/null; then
+            echo "❌ Invalid JSON output, creating error report"
+            echo '{"error": "Invalid JSON output", "validation": {"passed": false}}' > peacemaker-report.json
+          fi
           
       - name: Generate PR Comment
         if: always()
@@ -70,10 +94,17 @@ jobs:
               report = JSON.parse(reportData);
             } catch (error) {
               console.error('Failed to read report:', error);
-              return;
+              report = {
+                error: 'Failed to generate report',
+                validation: { passed: false }
+              };
             }
             
             const formatComment = (report) => {
+              if (report.error) {
+                return \`## ⚔️ PEACEMAKER ANALYSIS\\n\\n❌ **Error:** \${report.error}\\n\\nPlease check the workflow logs for details.\`;
+              }
+              
               const status = report.validation?.passed ? '✅ Passed' : '❌ Failed';
               const conflicts = report.conflicts?.length || 0;
               const importIssues = report.importIssues?.length || 0;
@@ -241,9 +272,13 @@ async function postinstall() {
 
     console.log(chalk.bold.green('\n✅ Peacemaker setup complete!\n'));
     console.log(chalk.bold('Next steps:\n'));
-    console.log('1. Add GitHub secrets to your repository:');
-    console.log(chalk.cyan('   - IBM_BOB_API_KEY'));
-    console.log(chalk.cyan('   - IBM_BOB_API_URL\n'));
+    console.log('1. Create GitHub Environment and add secrets:');
+    console.log(chalk.gray('   a. Go to: Settings → Environments'));
+    console.log(chalk.gray('   b. Click "New environment"'));
+    console.log(chalk.gray('   c. Name it: "peacemaker" (exactly as shown)'));
+    console.log(chalk.gray('   d. Add these secrets to the environment:'));
+    console.log(chalk.cyan('      - IBM_BOB_API_KEY'));
+    console.log(chalk.cyan('      - IBM_BOB_API_URL\n'));
     console.log('2. Commit the new files:');
     console.log(chalk.gray('   git add .github/workflows/peacemaker.yml .peacemakerrc.json'));
     console.log(chalk.gray('   git commit -m "Add Peacemaker CI/CD integration"'));
