@@ -51,9 +51,15 @@ async function resolveCommand(branch, options) {
 
     // Determine branches
     const sourceBranch = branch || await gitOps.getCurrentBranch();
-    const targetBranch = options.target || 'main';
+    const requestedTarget = options.target || 'main';
+    
+    // Auto-detect upstream branch if available
+    const targetBranch = await gitOps.getUpstreamBranch(requestedTarget);
 
     logger.info(`Resolving merge: ${sourceBranch} → ${targetBranch}`);
+    if (targetBranch !== requestedTarget) {
+      logger.info(`Using upstream branch: ${targetBranch}`);
+    }
 
     // Run analysis (same as analyze command)
     spinner.start('Analyzing merge...');

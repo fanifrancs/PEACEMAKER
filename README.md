@@ -162,6 +162,8 @@ npm install -g peacemaker
    ```bash
    npx peacemaker analyze feature-branch --target main
    ```
+   
+   **Note:** Peacemaker automatically detects if your repo is a fork and uses `upstream/main` instead of `origin/main` for accurate analysis.
 
 2. **Get AI Guidance**:
    ```bash
@@ -172,6 +174,23 @@ npm install -g peacemaker
    ```bash
    npx peacemaker apply --commit
    ```
+
+### Working with Forks
+
+Peacemaker intelligently detects upstream branches:
+
+```bash
+# If you have an 'upstream' remote, Peacemaker automatically uses it
+git remote add upstream https://github.com/original-repo/project.git
+git fetch upstream
+
+# Now analyze against upstream (automatic detection)
+npx peacemaker analyze feature-branch --target main
+# → Analyzes against upstream/main ✅
+
+# Or explicitly specify
+npx peacemaker analyze feature-branch --target upstream/main
+```
 
 ---
 
