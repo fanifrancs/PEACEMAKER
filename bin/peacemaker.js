@@ -34,7 +34,10 @@ program
   .description('Get AI-powered suggestions for resolving merge conflicts')
   .option('-t, --target <branch>', 'Target branch to merge into', 'main')
   .option('--auto-apply', 'Automatically apply high-confidence suggestions')
+  .option('--skip-validation', 'Skip syntax validation')
+  .option('--validation-level <level>', 'Validation level (basic|strict)', 'basic')
   .option('--ci', 'Run in CI mode (non-interactive)')
+  .option('-o, --output <format>', 'Output format (text|json)', 'text')
   .action(resolveCommand);
 
 // Parse arguments
