@@ -12,10 +12,13 @@ const GuidanceOrchestrator = require('../ai/guidance-orchestrator');
 const GuidanceReporter = require('../core/guidance-reporter');
 const PreValidator = require('../validation/pre-validator');
 const ValidationReporter = require('../validation/validation-reporter');
+const PatchGenerator = require('../patch/patch-generator');
 const Spinner = require('../utils/spinner');
 const logger = require('../utils/logger');
 const config = require('../utils/config');
 const chalk = require('chalk');
+const fs = require('fs').promises;
+const path = require('path');
 
 async function resolveCommand(branch, options) {
   const spinner = new Spinner();
@@ -223,12 +226,47 @@ async function interactiveApproval(guidance, analysis, spinner) {
   }]);
 
   if (applyChanges) {
-    spinner.start('Applying suggestions...');
-    // In production, would actually apply the changes
-    spinner.succeed(`Applied ${approved.length} suggestions`);
+    // Generate patches from approved suggestions
+    spinner.start('Generating patches...');
+    const gitOps = new GitOperations();
+    const patchGenerator = new PatchGenerator(gitOps);
     
-    console.log(chalk.green('\n✓ Suggestions applied successfully'));
-    console.log(chalk.gray('Review the changes and commit when ready'));
+    try {
+      const patches = await patchGenerator.generatePatches(approved);
+      
+      // Save patches to file
+      const patchDir = '.peacemaker';
+      await fs.mkdir(patchDir, { recursive: true });
+      
+      const patchFile = path.join(patchDir, 'patches.json');
+      await fs.writeFile(patchFile, JSON.stringify(patches, null, 2), 'utf8');
+      
+      // Also save human-readable format
+      const readableFile = path.join(patchDir, 'patches.md');
+      const readableContent = patchGenerator.formatPatchesForFile(patches);
+      await fs.writeFile(readableFile, readableContent, 'utf8');
+      
+      spinner.succeed(`Generated ${patches.metadata.generatedPatches} patches`);
+      
+      // Store guidance for commit message
+      patches.guidance = guidance;
+      await fs.writeFile(patchFile, JSON.stringify(patches, null, 2), 'utf8');
+      
+      console.log(chalk.green('\n✓ Patches generated successfully'));
+      console.log(chalk.gray(`Patches saved to: ${patchFile}`));
+      console.log(chalk.gray(`Readable format: ${readableFile}`));
+      console.log(chalk.yellow('\nNext steps:'));
+      console.log(chalk.gray('1. Review patches: cat .peacemaker/patches.md'));
+      console.log(chalk.gray('2. Apply patches: peacemaker apply'));
+      console.log(chalk.gray('3. Or apply with commit: peacemaker apply --commit'));
+    } catch (error) {
+      spinner.fail('Failed to generate patches');
+      logger.error('Patch generation error:', error.message);
+      
+      if (process.env.PEACEMAKER_LOG_LEVEL === 'debug') {
+        console.error(error);
+      }
+    }
   } else {
     console.log(chalk.gray('\nChanges not applied'));
   }
