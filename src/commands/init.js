@@ -69,11 +69,11 @@ async function initCommand(options) {
     console.log(chalk.cyan('   IBM_BOB_API_KEY=your_api_key'));
     console.log(chalk.cyan('   IBM_BOB_API_URL=your_api_url\n'));
     console.log('2. Analyze your branch:');
-    console.log(chalk.gray('   npx peacemaker analyze feature-branch --target main\n'));
+    console.log(chalk.gray('   peacemaker analyze feature-branch --target main\n'));
     console.log('3. Get AI guidance:');
-    console.log(chalk.gray('   npx peacemaker resolve feature-branch --target main\n'));
+    console.log(chalk.gray('   peacemaker resolve feature-branch --target main\n'));
     console.log('4. Apply patches:');
-    console.log(chalk.gray('   npx peacemaker apply --commit\n'));
+    console.log(chalk.gray('   peacemaker apply --commit\n'));
     console.log(chalk.dim('For more information, visit: https://github.com/femix300/PEACEMAKER\n'));
 
   } catch (error) {
