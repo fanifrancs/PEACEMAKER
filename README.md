@@ -543,37 +543,7 @@ npm install
 
 # Run in development
 node bin/peacemaker.js analyze
-
-# Run tests
-npm test
-
-# Run tests with coverage
-npm run test:coverage
-
-# Run tests in watch mode
-npm run test:watch
 ```
-
-### Running Tests
-
-```bash
-# Run all tests
-npm test
-
-# Run with coverage report
-npm run test:coverage
-
-# Run in watch mode for development
-npm run test:watch
-
-# Run specific test file
-npm test -- src/core/classifier.test.js
-
-# Run tests matching pattern
-npm test -- --testNamePattern="should classify"
-```
-
-See [docs/TESTING.md](docs/TESTING.md) for comprehensive testing guidelines.
 
 ### Code Style
 
