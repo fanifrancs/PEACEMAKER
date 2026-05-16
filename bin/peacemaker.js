@@ -12,6 +12,7 @@ const packageJson = require('../package.json');
 // Import commands
 const analyzeCommand = require('../src/commands/analyze');
 const resolveCommand = require('../src/commands/resolve');
+const applyCommand = require('../src/commands/apply');
 
 // Configure CLI
 program
@@ -39,6 +40,15 @@ program
   .option('--ci', 'Run in CI mode (non-interactive)')
   .option('-o, --output <format>', 'Output format (text|json)', 'text')
   .action(resolveCommand);
+
+// Apply command
+program
+  .command('apply [patch-file]')
+  .description('Apply generated patches to files')
+  .option('-y, --yes', 'Skip confirmation prompts')
+  .option('--dry-run', 'Show what would be applied without making changes')
+  .option('--commit', 'Create a git commit after applying patches')
+  .action(applyCommand);
 
 // Parse arguments
 program.parse(process.argv);
