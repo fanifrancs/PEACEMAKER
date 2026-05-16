@@ -1,7 +1,7 @@
 /**
- * Pre-Validation Pipeline (Point 9)
- * Lightweight validation before CI execution
- * Target: < 30 seconds for typical PR
+ * Pre-Validation Pipeline
+ * Lightweight validation before commit
+ * Target: < 30 seconds for typical merge
  */
 
 const path = require('path');
