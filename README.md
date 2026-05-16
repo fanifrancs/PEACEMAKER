@@ -619,7 +619,7 @@ We welcome contributions! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for deta
 
 ```bash
 # Clone repository
-git clone https://github.com/fanifrancs/PEACEMAKER.git
+git clone https://github.com/femix300/PEACEMAKER.git
 cd PEACEMAKER
 
 # Install dependencies
@@ -654,8 +654,8 @@ MIT License - see [LICENSE](LICENSE) file for details.
 
 ## 📞 Support
 
-- **Issues**: [GitHub Issues](https://github.com/fanifrancs/PEACEMAKER/issues)
-- **Discussions**: [GitHub Discussions](https://github.com/fanifrancs/PEACEMAKER/discussions)
+- **Issues**: [GitHub Issues](https://github.com/femix300/PEACEMAKER/issues)
+- **Discussions**: [GitHub Discussions](https://github.com/femix300/PEACEMAKER/discussions)
 - **Documentation**: [docs/](docs/)
 
 ---
