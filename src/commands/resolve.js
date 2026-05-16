@@ -10,6 +10,8 @@ const ConflictAnalyzer = require('../git/analyzer');
 const TierClassifier = require('../core/classifier');
 const GuidanceOrchestrator = require('../ai/guidance-orchestrator');
 const GuidanceReporter = require('../core/guidance-reporter');
+const PreValidator = require('../validation/pre-validator');
+const ValidationReporter = require('../validation/validation-reporter');
 const Spinner = require('../utils/spinner');
 const logger = require('../utils/logger');
 const config = require('../utils/config');
@@ -96,9 +98,35 @@ async function resolveCommand(branch, options) {
     });
     spinner.succeed('AI guidance generated');
 
+    // Run pre-validation (Point 9)
+    let validationResults = null;
+    if (!options.skipValidation) {
+      spinner.start('Running pre-validation checks...');
+      const preValidator = new PreValidator(gitOps);
+      const validationReporter = new ValidationReporter();
+      
+      try {
+        validationResults = await preValidator.validate(changedFiles, {
+          validationLevel: options.validationLevel || 'basic',
+          skipValidation: options.skipValidation,
+        });
+        spinner.succeed(`Pre-validation complete (${validationResults.duration}ms)`);
+        
+        // Display validation results
+        validationReporter.displayResults(validationResults);
+      } catch (error) {
+        spinner.warn('Pre-validation encountered issues');
+        logger.error('Validation error:', error.message);
+      }
+    }
+
     // Display guidance report
     if (options.output === 'json') {
-      console.log(reporter.generateJSONReport(guidance));
+      const fullReport = {
+        guidance,
+        validation: validationResults,
+      };
+      console.log(JSON.stringify(fullReport, null, 2));
       return;
     }
 
