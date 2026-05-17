@@ -1,358 +1,405 @@
-import { execSync } from 'child_process';
-import logger from '../utils/logger.js';
-import { getChangedFiles } from '../git/operations.js';
-import { execSync as exec } from 'child_process';
+const path = require('path');
+const logger = require('../utils/logger');
 
-/**
- * Analyzes code changes using Bob Shell to identify potential issues
- * @param {string} filePath - Path to the file to analyze
- * @param {string} diff - Git diff content for the file
- * @returns {Promise<Object>} Analysis results with issues found
- */
-export async function analyzeChanges(filePath, diff) {
-  logger.info(`Analyzing changes in ${filePath}`);
-  
-  try {
-    // Prepare the analysis prompt for Bob
-    const prompt = `Analyze the following git diff for potential issues, bugs, or improvements needed:
+class MergeAnalyzer {
+  constructor(gitOps) {
+    this.gitOps = gitOps;
+  }
 
-File: ${filePath}
+  async analyze(baseBranch, featureBranch, metrics, classification) {
+    logger.info('[Analysis] Building branch comparison report');
 
-Diff:
-${diff}
+    const mergeBase = await this._getMergeBase(baseBranch, featureBranch);
+    const sideChanges = await this._getNameStatus(mergeBase ? `${mergeBase}..${featureBranch}` : `${baseBranch}..${featureBranch}`);
+    const baseChanges = mergeBase ? await this._getNameStatus(`${mergeBase}..${baseBranch}`) : [];
 
-Please identify:
-1. Potential bugs or logic errors
-2. Code quality issues
-3. Security concerns
-4. Performance problems
-5. Best practice violations
+    const sidePaths = new Set(sideChanges.map(c => c.file));
+    const basePaths = new Set(baseChanges.map(c => c.file));
+    const overlappingFiles = [...sidePaths].filter(file => basePaths.has(file)).sort();
 
-Provide a structured analysis with severity levels (critical, high, medium, low).`;
+    const sideSummary = this._summarizeChanges(sideChanges);
+    const baseSummary = this._summarizeChanges(baseChanges);
+    const subsystemImpact = this._groupBySubsystem(sideChanges, baseChanges);
 
-    // Call Bob Shell for analysis
-    const bobCommand = `bob "${prompt.replace(/"/g, '\\"')}"`;
-    
-    logger.debug(`Executing Bob analysis for ${filePath}`);
-    const output = execSync(bobCommand, {
-      encoding: 'utf-8',
-      maxBuffer: 10 * 1024 * 1024, // 10MB buffer
-      timeout: 60000 // 60 second timeout
+    const configFiles = sideChanges
+      .filter(change => this._isConfigFile(change.file))
+      .map(change => change.file);
+
+    const deletedOnSide = sideChanges
+      .filter(change => change.type === 'D')
+      .map(change => change.file);
+
+    const renamedOnSide = sideChanges
+      .filter(change => change.type === 'R')
+      .map(change => ({ from: change.oldFile, to: change.file }));
+
+    const directoryMoves = this._detectDirectoryMoves(renamedOnSide, sideChanges);
+    const manualActions = this._buildManualActions({
+      mergeBase,
+      sideChanges,
+      baseChanges,
+      overlappingFiles,
+      configFiles,
+      deletedOnSide,
+      renamedOnSide,
+      directoryMoves,
+      classification
     });
 
-    // Parse Bob's response
-    const analysis = parseBobAnalysis(output, filePath);
-    
-    logger.info(`Analysis complete for ${filePath}: ${analysis.issues.length} issues found`);
-    return analysis;
-    
-  } catch (error) {
-    logger.error(`Failed to analyze ${filePath}:`, error);
     return {
-      filePath,
-      issues: [],
-      error: error.message
+      baseBranch,
+      featureBranch,
+      mergeBase,
+      hasMergeBase: !!mergeBase,
+      metrics,
+      classification,
+      sideChanges,
+      baseChanges,
+      sideSummary,
+      baseSummary,
+      overlappingFiles,
+      configFiles: [...new Set(configFiles)].sort(),
+      deletedOnSide,
+      renamedOnSide,
+      directoryMoves,
+      subsystemImpact,
+      manualActions
     };
   }
-}
 
-/**
- * Analyzes multiple files in parallel
- * @param {Array<{path: string, diff: string}>} files - Array of files with their diffs
- * @returns {Promise<Array<Object>>} Array of analysis results
- */
-export async function analyzeMultipleFiles(files) {
-  logger.info(`Analyzing ${files.length} files in parallel`);
-  
-  const analyses = await Promise.all(
-    files.map(file => analyzeChanges(file.path, file.diff))
-  );
-  
-  return analyses;
-}
+  printTerminalReport(analysis, classification) {
+    const chalk = require('../utils/colors');
 
-/**
- * Parses Bob's analysis output into structured format
- * @param {string} output - Raw output from Bob
- * @param {string} filePath - File path being analyzed
- * @returns {Object} Structured analysis results
- */
-function parseBobAnalysis(output, filePath) {
-  const issues = [];
-  
-  // Extract issues from Bob's response
-  // Bob typically provides structured feedback with severity indicators
-  const lines = output.split('\n');
-  let currentIssue = null;
-  
-  for (const line of lines) {
-    // Look for severity indicators
-    const severityMatch = line.match(/\b(critical|high|medium|low)\b/i);
-    if (severityMatch) {
-      if (currentIssue) {
-        issues.push(currentIssue);
+    console.log('');
+    console.log(chalk.bold(chalk.cyan('Merge Analysis')));
+    console.log(chalk.gray('─'.repeat(50)));
+    console.log(chalk.bold('  Base:       ') + chalk.cyan(analysis.baseBranch));
+    console.log(chalk.bold('  Feature:    ') + chalk.cyan(analysis.featureBranch));
+    console.log(chalk.bold('  Merge base: ') + (analysis.mergeBase ? chalk.white(analysis.mergeBase.substring(0, 12)) : chalk.red('not found')));
+    console.log(chalk.bold('  Tier:       ') + chalk.white(`${classification.tier} (${classification.reasoning.summary})`));
+
+    if (!analysis.hasMergeBase) {
+      console.log(chalk.yellow('  Warning:    No merge base found; report uses branch-tip comparison.'));
+    }
+
+    console.log('');
+    const sideSummaryStr = analysis.hasMergeBase
+      ? this._formatSummary(analysis.sideSummary)
+      : `${analysis.sideSummary.added} added, ${analysis.sideSummary.modified} modified, ${analysis.sideSummary.renamed} renamed, ${analysis.deletedOnSide.length} not present on feature (branch-tip diff — not necessarily deleted)`;
+    console.log(chalk.bold('  Feature-side changes: ') + chalk.white(sideSummaryStr));
+    if (analysis.baseChanges.length > 0) {
+      console.log(chalk.bold('  Base-side changes:    ') + chalk.white(this._formatSummary(analysis.baseSummary)));
+    }
+
+    if (analysis.overlappingFiles.length > 0) {
+      console.log(chalk.bold('  Overlap:    ') + chalk.yellow(`${analysis.overlappingFiles.length} file(s) changed on both sides`));
+      analysis.overlappingFiles.slice(0, 5).forEach(file => console.log(chalk.gray(`    - ${file}`)));
+      if (analysis.overlappingFiles.length > 5) {
+        console.log(chalk.gray(`    ... and ${analysis.overlappingFiles.length - 5} more`));
       }
-      currentIssue = {
-        severity: severityMatch[1].toLowerCase(),
-        description: line.trim(),
-        line: extractLineNumber(line)
-      };
-    } else if (currentIssue && line.trim()) {
-      // Continue building current issue description
-      currentIssue.description += '\n' + line.trim();
     }
-  }
-  
-  // Add last issue if exists
-  if (currentIssue) {
-    issues.push(currentIssue);
-  }
-  
-  // If no structured issues found, create a general analysis
-  if (issues.length === 0 && output.trim()) {
-    issues.push({
-      severity: 'medium',
-      description: output.trim(),
-      line: null
-    });
-  }
-  
-  return {
-    filePath,
-    issues,
-    summary: generateSummary(issues)
-  };
-}
 
-/**
- * Extracts line number from issue description
- * @param {string} text - Text that may contain line number
- * @returns {number|null} Line number or null
- */
-function extractLineNumber(text) {
-  const match = text.match(/line\s+(\d+)/i);
-  return match ? parseInt(match[1], 10) : null;
-}
-
-/**
- * Generates a summary of issues by severity
- * @param {Array<Object>} issues - Array of issues
- * @returns {Object} Summary statistics
- */
-function generateSummary(issues) {
-  const summary = {
-    total: issues.length,
-    critical: 0,
-    high: 0,
-    medium: 0,
-    low: 0
-  };
-  
-  for (const issue of issues) {
-    const severity = issue.severity.toLowerCase();
-    if (summary.hasOwnProperty(severity)) {
-      summary[severity]++;
+    if (analysis.directoryMoves.length > 0) {
+      console.log(chalk.bold('  Moves:      ') + chalk.yellow(`${analysis.directoryMoves.length} possible directory migration(s)`));
+      analysis.directoryMoves.slice(0, 3).forEach(move => console.log(chalk.gray(`    - ${move.from} -> ${move.to} (${move.count} files)`)));
     }
-  }
-  
-  return summary;
-}
 
-/**
- * Performs semantic analysis of merge conflicts
- * @param {Array<Object>} conflicts - Array of conflict objects
- * @returns {Promise<Object>} Semantic analysis results
- */
-export async function analyzeConflicts(conflicts) {
-  logger.info(`Performing semantic analysis of ${conflicts.length} conflicts`);
-  
-  const analyses = [];
-  
-  for (const conflict of conflicts) {
+    if (analysis.configFiles.length > 0) {
+      console.log(chalk.bold('  Config:     ') + chalk.yellow(`${analysis.configFiles.length} config/build file(s) touched`));
+      analysis.configFiles.slice(0, 5).forEach(file => console.log(chalk.gray(`    - ${file}`)));
+    }
+
+    if (analysis.manualActions.length > 0) {
+      console.log('');
+      console.log(chalk.bold('  Recommended focus:'));
+      analysis.manualActions.slice(0, 4).forEach(action => console.log(chalk.gray(`    - ${action}`)));
+    }
+
+    console.log(chalk.gray('─'.repeat(50)));
+    console.log('');
+  }
+
+  markdownSections(analysis) {
+    const lines = [];
+
+    lines.push('## Branch Comparison');
+    lines.push('');
+    lines.push(`- **Base branch:** \`${analysis.baseBranch}\``);
+    lines.push(`- **Feature branch:** \`${analysis.featureBranch}\``);
+    lines.push(`- **Merge base:** ${analysis.mergeBase ? `\`${analysis.mergeBase}\`` : '**not found**'}`);
+    if (!analysis.hasMergeBase) {
+      lines.push('- **Warning:** No merge base was found. This usually means unusual or unrelated branch history, so manual review should be extra conservative.');
+    }
+    lines.push('');
+    lines.push(`- **Feature-side changes:** ${this._formatSummary(analysis.sideSummary)}`);
+    if (analysis.baseChanges.length > 0) {
+      lines.push(`- **Base-side changes:** ${this._formatSummary(analysis.baseSummary)}`);
+    }
+    lines.push('');
+
+    lines.push('## Subsystem Impact');
+    lines.push('');
+    const subsystems = Object.entries(analysis.subsystemImpact)
+      .sort((a, b) => (b[1].feature + b[1].base) - (a[1].feature + a[1].base));
+
+    if (subsystems.length === 0) {
+      lines.push('No subsystem impact data available.');
+      lines.push('');
+    } else {
+      lines.push('| Subsystem | Feature Changes | Base Changes | Notes |');
+      lines.push('|---|---:|---:|---|');
+      for (const [name, impact] of subsystems) {
+        const notes = [];
+        if (impact.feature > 20) notes.push('large feature-side change');
+        if (impact.base > 20) notes.push('large base-side change');
+        if (impact.feature > 0 && impact.base > 0) notes.push('changed on both sides');
+        lines.push(`| ${name} | ${impact.feature} | ${impact.base} | ${notes.join(', ') || '-'} |`);
+      }
+      lines.push('');
+    }
+
+    if (analysis.directoryMoves.length > 0) {
+      lines.push('## Directory Moves / Restructuring');
+      lines.push('');
+      lines.push('Peacemaker detected possible directory-level restructuring:');
+      lines.push('');
+      for (const move of analysis.directoryMoves) {
+        lines.push(`- \`${move.from}\` -> \`${move.to}\` (${move.count} file(s))`);
+      }
+      lines.push('');
+      lines.push('Manual resolution should first decide the canonical directory layout before resolving individual file diffs.');
+      lines.push('');
+    }
+
+    if (analysis.overlappingFiles.length > 0) {
+      lines.push('## Files Changed On Both Sides');
+      lines.push('');
+      lines.push('These files need careful manual reconciliation because both branches touched them:');
+      lines.push('');
+      analysis.overlappingFiles.slice(0, 60).forEach(file => lines.push(`- \`${file}\``));
+      if (analysis.overlappingFiles.length > 60) {
+        lines.push(`- ... and ${analysis.overlappingFiles.length - 60} more`);
+      }
+      lines.push('');
+    }
+
+    if (analysis.configFiles.length > 0) {
+      lines.push('## Config / Build Files To Reconcile');
+      lines.push('');
+      lines.push('These files affect build, runtime, dependency, deployment, or environment behavior:');
+      lines.push('');
+      analysis.configFiles.slice(0, 80).forEach(file => lines.push(`- \`${file}\``));
+      lines.push('');
+      lines.push('Manual checks:');
+      lines.push('');
+      lines.push('- Compare dependency changes and lockfiles together.');
+      lines.push('- Confirm package scripts still match the chosen app directory.');
+      lines.push('- Confirm Docker, Vite, Tailwind, TypeScript, and backend settings point to existing files.');
+      lines.push('- Run the frontend build and backend checks after reconciliation.');
+      lines.push('');
+    }
+
+    if (analysis.deletedOnSide.length > 0) {
+      if (analysis.hasMergeBase) {
+        lines.push('## Feature-Side Deletes');
+        lines.push('');
+        lines.push('These files were explicitly deleted on the feature branch since the merge base. Confirm each deletion is intentional:');
+      } else {
+        lines.push('## Files Not Present on Feature Branch');
+        lines.push('');
+        lines.push('No merge base was found, so these files appear in the base branch but are absent from the feature branch. They may never have existed on the feature branch — they are NOT necessarily deleted. Verify before removing any:');
+      }
+      lines.push('');
+      analysis.deletedOnSide.slice(0, 80).forEach(file => lines.push(`- \`${file}\``));
+      if (analysis.deletedOnSide.length > 80) {
+        lines.push(`- ... and ${analysis.deletedOnSide.length - 80} more`);
+      }
+      lines.push('');
+    }
+
+    if (analysis.manualActions.length > 0) {
+      lines.push('## Concrete Manual Resolution Plan');
+      lines.push('');
+      analysis.manualActions.forEach((action, index) => {
+        lines.push(`${index + 1}. ${action}`);
+      });
+      lines.push('');
+    }
+
+    return lines;
+  }
+
+  _classificationTier() {
+    return this._currentClassification && this._currentClassification.tier;
+  }
+
+  _formatSummary(summary) {
+    return `${summary.added} added, ${summary.modified} modified, ${summary.deleted} deleted, ${summary.renamed} renamed`;
+  }
+
+  async _getMergeBase(baseBranch, featureBranch) {
     try {
-      const prompt = `Analyze this merge conflict semantically:
-
-File: ${conflict.path}
-
-Base version:
-${conflict.base || 'N/A'}
-
-Current branch version:
-${conflict.ours || 'N/A'}
-
-Incoming branch version:
-${conflict.theirs || 'N/A'}
-
-Determine:
-1. The semantic intent of each version
-2. Whether the changes are compatible
-3. The best resolution strategy
-4. Any potential issues with merging`;
-
-      const bobCommand = `bob "${prompt.replace(/"/g, '\\"')}"`;
-      
-      const output = execSync(bobCommand, {
-        encoding: 'utf-8',
-        maxBuffer: 10 * 1024 * 1024,
-        timeout: 60000
-      });
-      
-      analyses.push({
-        path: conflict.path,
-        analysis: output.trim(),
-        recommendation: extractRecommendation(output)
-      });
-      
+      const value = await this.gitOps.git.raw(['merge-base', baseBranch, featureBranch]);
+      const trimmed = value.trim();
+      return trimmed || null;
     } catch (error) {
-      logger.error(`Failed to analyze conflict in ${conflict.path}:`, error);
-      analyses.push({
-        path: conflict.path,
-        error: error.message
-      });
+      logger.warn(`[Analysis] No merge base found between ${baseBranch} and ${featureBranch}: ${error.message}`);
+      return null;
     }
   }
-  
-  return {
-    conflicts: analyses,
-    summary: generateConflictSummary(analyses)
-  };
-}
 
-/**
- * Extracts resolution recommendation from Bob's analysis
- * @param {string} output - Bob's analysis output
- * @returns {string} Recommendation
- */
-function extractRecommendation(output) {
-  // Look for recommendation keywords
-  const lines = output.split('\n');
-  for (const line of lines) {
-    if (line.match(/recommend|suggest|should|best/i)) {
-      return line.trim();
+  async _getNameStatus(range) {
+    try {
+      const output = await this.gitOps.git.raw(['diff', '--name-status', range]);
+      return output
+        .split('\n')
+        .map(line => line.trim())
+        .filter(Boolean)
+        .map(line => this._parseNameStatus(line));
+    } catch (error) {
+      logger.warn(`[Analysis] Could not read name-status for ${range}: ${error.message}`);
+      return [];
     }
   }
-  return 'Manual review recommended';
-}
 
-/**
- * Generates summary of conflict analyses
- * @param {Array<Object>} analyses - Array of conflict analyses
- * @returns {Object} Summary
- */
-function generateConflictSummary(analyses) {
-  return {
-    total: analyses.length,
-    analyzed: analyses.filter(a => !a.error).length,
-    failed: analyses.filter(a => a.error).length
-  };
-}
+  _parseNameStatus(line) {
+    const parts = line.split('\t');
+    const status = parts[0];
+    const type = status[0];
 
-/**
- * Builds comprehensive merge analysis
- * @param {string} featureBranch - Feature branch name
- * @param {string} baseBranch - Base branch name
- * @param {Object} classification - Merge classification
- * @returns {Promise<Object>} Merge analysis
- */
-export async function buildMergeAnalysis(featureBranch, baseBranch, classification) {
-  logger.info(`Building merge analysis for ${featureBranch} -> ${baseBranch}`);
-  
-  try {
-    // Get changed files
-    const changedFiles = await getChangedFiles(featureBranch, baseBranch);
-    
-    // Get diff for each file
-    const filesWithDiffs = [];
-    for (const file of changedFiles) {
-      try {
-        const diff = exec(`git diff ${baseBranch}...${featureBranch} -- "${file}"`, {
-          encoding: 'utf-8',
-          maxBuffer: 10 * 1024 * 1024
-        });
-        filesWithDiffs.push({ path: file, diff });
-      } catch (error) {
-        logger.warn(`Failed to get diff for ${file}: ${error.message}`);
+    if (type === 'R' || type === 'C') {
+      return {
+        status,
+        type,
+        oldFile: parts[1],
+        file: parts[2] || parts[1]
+      };
+    }
+
+    return {
+      status,
+      type,
+      oldFile: null,
+      file: parts[1] || parts[0]
+    };
+  }
+
+  _summarizeChanges(changes) {
+    return {
+      added: changes.filter(c => c.type === 'A').length,
+      modified: changes.filter(c => c.type === 'M').length,
+      deleted: changes.filter(c => c.type === 'D').length,
+      renamed: changes.filter(c => c.type === 'R').length
+    };
+  }
+
+  _groupBySubsystem(sideChanges, baseChanges) {
+    const impact = {};
+
+    const add = (name, key) => {
+      if (!impact[name]) impact[name] = { feature: 0, base: 0 };
+      impact[name][key] += 1;
+    };
+
+    sideChanges.forEach(change => add(this._subsystem(change.file), 'feature'));
+    baseChanges.forEach(change => add(this._subsystem(change.file), 'base'));
+
+    return impact;
+  }
+
+  _subsystem(file) {
+    if (file.startsWith('backend/')) return 'Backend';
+    if (file.startsWith('Frontend/')) return 'Frontend';
+    if (file.startsWith('app/')) return 'App Frontend';
+    if (file.startsWith('docs/') || /(^|\/)README\.md$/i.test(file)) return 'Docs';
+    if (/\.(png|jpg|jpeg|gif|svg|webp|ico)$/i.test(file)) return 'Assets';
+    if (this._isConfigFile(file)) return 'Config / Build';
+    return file.includes('/') ? file.split('/')[0] : 'Root';
+  }
+
+  _isConfigFile(file) {
+    return /(^|\/)(package\.json|package-lock\.json|pnpm-lock\.yaml|yarn\.lock|Dockerfile|docker-compose\.ya?ml|vite\.config\.[jt]s|tailwind\.config\.[jt]s|tsconfig.*\.json|eslint\.config\.[jt]s|postcss\.config\.[jt]s|requirements\.txt|pyproject\.toml|manage\.py|settings\.py|urls\.py|\.env\.example|\.gitignore)$/i.test(file);
+  }
+
+  _detectDirectoryMoves(renames, sideChanges) {
+    const counts = new Map();
+
+    for (const rename of renames) {
+      const fromRoot = this._firstDir(rename.from);
+      const toRoot = this._firstDir(rename.to);
+      if (fromRoot && toRoot && fromRoot !== toRoot) {
+        const key = `${fromRoot}->${toRoot}`;
+        counts.set(key, (counts.get(key) || 0) + 1);
       }
     }
-    
-    // Analyze files
-    const analyses = await analyzeMultipleFiles(filesWithDiffs);
-    
-    // Aggregate results
-    const allIssues = analyses.flatMap(a => a.issues || []);
-    const summary = generateSummary(allIssues);
-    
-    return {
-      featureBranch,
-      baseBranch,
-      tier: classification.tier,
-      filesAnalyzed: changedFiles.length,
-      issues: allIssues,
-      summary,
-      fileAnalyses: analyses
-    };
-    
-  } catch (error) {
-    logger.error(`Failed to build merge analysis: ${error.message}`);
-    return {
-      featureBranch,
-      baseBranch,
-      tier: classification.tier,
-      error: error.message,
-      issues: [],
-      summary: { total: 0, critical: 0, high: 0, medium: 0, low: 0 }
-    };
+
+    const appDeletes = sideChanges.filter(c => c.type === 'D' && c.file.startsWith('app/')).length;
+    const frontendAdds = sideChanges.filter(c => c.type === 'A' && c.file.startsWith('Frontend/')).length;
+    if (appDeletes > 10 && frontendAdds > 10) {
+      counts.set('app->Frontend', Math.max(counts.get('app->Frontend') || 0, Math.min(appDeletes, frontendAdds)));
+    }
+
+    return [...counts.entries()]
+      .map(([key, count]) => {
+        const [from, to] = key.split('->');
+        return { from, to, count };
+      })
+      .sort((a, b) => b.count - a.count);
+  }
+
+  _firstDir(file) {
+    return file && file.includes('/') ? file.split('/')[0] : null;
+  }
+
+  _buildManualActions({ mergeBase, sideChanges, baseChanges, overlappingFiles, configFiles, deletedOnSide, directoryMoves, classification }) {
+    this._currentClassification = classification || null;
+    const actions = [];
+
+    if (!mergeBase) {
+      actions.push('Resolve branch ancestry first: no merge base was found, so compare branch tips carefully before attempting rebase or automated merge.');
+    }
+
+    if (directoryMoves.length > 0) {
+      const move = directoryMoves[0];
+      actions.push(`Decide the canonical project layout before merging individual files, especially the apparent \`${move.from}\` to \`${move.to}\` migration.`);
+    }
+
+    if (overlappingFiles.length > 0) {
+      const tier = this._classificationTier();
+      if (tier === 3) {
+        actions.push(`Manually reconcile ${overlappingFiles.length} file(s) changed on both branches before attempting automation again.`);
+      } else {
+        actions.push(`Peacemaker will attempt semantic reconciliation for ${overlappingFiles.length} file(s) changed on both branches.`);
+      }
+    }
+
+    if (configFiles.length > 0) {
+      actions.push(`Reconcile ${configFiles.length} config/build file(s), then run install/build/test commands for the chosen frontend and backend layout.`);
+    }
+
+    if (deletedOnSide.length > 20) {
+      const deletionMsg = mergeBase
+        ? `Review ${deletedOnSide.length} feature-side deletions and confirm they are intentional, especially deleted app/backend modules.`
+        : `Review ${deletedOnSide.length} files present on the base branch but absent from the feature branch. No merge base exists — these files likely never existed on the feature branch and are not necessarily deleted.`;
+      actions.push(deletionMsg);
+    }
+
+    const backendTouched = sideChanges.some(c => c.file.startsWith('backend/')) || baseChanges.some(c => c.file.startsWith('backend/'));
+    const frontendTouched = sideChanges.some(c => c.file.startsWith('app/') || c.file.startsWith('Frontend/')) ||
+      baseChanges.some(c => c.file.startsWith('app/') || c.file.startsWith('Frontend/'));
+
+    if (frontendTouched) {
+      actions.push('After manual frontend reconciliation, run the frontend package install/build flow and inspect route-level UI entrypoints.');
+    }
+
+    if (backendTouched) {
+      actions.push('After manual backend reconciliation, run backend dependency checks, migrations if applicable, and API route smoke tests.');
+    }
+
+    actions.push('Break this merge into smaller PRs if possible: project layout, frontend UI, backend API, and docs/config are separate merge concerns.');
+
+    return actions;
   }
 }
 
-/**
- * Formats analysis results for terminal display
- * @param {Object} analysis - Analysis results
- * @returns {string} Formatted text for terminal
- */
-export function formatAnalysisForTerminal(analysis) {
-  if (!analysis || !analysis.issues || analysis.issues.length === 0) {
-    return 'No issues found.';
-  }
-  
-  let output = `\n📊 Analysis Results for ${analysis.filePath}\n`;
-  output += `${'='.repeat(60)}\n\n`;
-  
-  // Summary
-  const summary = analysis.summary || generateSummary(analysis.issues);
-  output += `Total Issues: ${summary.total}\n`;
-  if (summary.critical > 0) output += `  🔴 Critical: ${summary.critical}\n`;
-  if (summary.high > 0) output += `  🟠 High: ${summary.high}\n`;
-  if (summary.medium > 0) output += `  🟡 Medium: ${summary.medium}\n`;
-  if (summary.low > 0) output += `  🟢 Low: ${summary.low}\n`;
-  output += '\n';
-  
-  // Issues
-  for (let i = 0; i < analysis.issues.length; i++) {
-    const issue = analysis.issues[i];
-    const icon = getSeverityIcon(issue.severity);
-    output += `${i + 1}. ${icon} ${issue.severity.toUpperCase()}`;
-    if (issue.line) output += ` (Line ${issue.line})`;
-    output += '\n';
-    output += `   ${issue.description}\n\n`;
-  }
-  
-  return output;
-}
-
-/**
- * Gets icon for severity level
- * @param {string} severity - Severity level
- * @returns {string} Icon
- */
-function getSeverityIcon(severity) {
-  const icons = {
-    critical: '🔴',
-    high: '🟠',
-    medium: '🟡',
-    low: '🟢'
-  };
-  return icons[severity.toLowerCase()] || '⚪';
-}
-
-// Made with Bob
+module.exports = MergeAnalyzer;
