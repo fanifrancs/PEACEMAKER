@@ -40,3 +40,5 @@ PEACEMAKER_DIAGNOSTIC_REPORT.md
 
 # Made with Bob
 peacemaker.log
+.env
+bob_sessions/
