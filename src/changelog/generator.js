@@ -1,226 +1,236 @@
-import fs from 'fs';
-import path from 'path';
-import { commitChanges, stageFiles } from '../git/operations.js';
-import logger from '../utils/logger.js';
+const fs = require('fs').promises;
+const path = require('path');
+const logger = require('../utils/logger');
 
-const CHANGELOG_PATH = 'PEACEMAKR_CHANGELOG.md';
+/**
+ * Changelog Generator - Creates human-readable merge records
+ * Generates and maintains PEACEMAKER_CHANGELOG.md
+ */
+class ChangelogGenerator {
+  constructor() {
+    this.changelogPath = 'PEACEMAKER_CHANGELOG.md';
+  }
 
-export async function appendToChangelog(options) {
-  const {
-    featureBranch,
-    baseBranch,
-    tier,
-    classification,
-    intent,
-    filesModified = [],
-    overlappingFiles = [],
-    preservedFiles = [],
-    deletedFiles = [],
-    verificationPassed = true,
-    backupTag,
-  } = options;
-  
-  try {
-    // Generate timestamp in WAT
-    const timestamp = new Date().toLocaleString('en-GB', {
-      timeZone: 'Africa/Lagos',
-      hour12: false,
-      day: '2-digit',
-      month: '2-digit',
-      year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
-      second: '2-digit',
-    }).replace(',', '');
+  /**
+   * Generate and append changelog entry for a merge
+   * @param {string} branch - Feature branch name
+   * @param {Object} intent - Extracted intent
+   * @param {Object} replayResult - Replay result
+   * @param {Object} classification - Classification result
+   * @returns {Promise<void>}
+   */
+  async generate(branch, intent, replayResult, classification) {
+    logger.info('Generating post-merge changelog...');
+
+    try {
+      const entry = this._buildChangelogEntry(branch, intent, replayResult, classification);
+      
+      // Check if changelog exists
+      let existingContent = '';
+      try {
+        existingContent = await fs.readFile(this.changelogPath, 'utf-8');
+      } catch (error) {
+        // File doesn't exist, create header
+        existingContent = this._buildChangelogHeader();
+      }
+
+      // Append new entry after header
+      const lines = existingContent.split('\n');
+      const headerEndIndex = lines.findIndex(line => line.startsWith('---'));
+      
+      if (headerEndIndex !== -1) {
+        lines.splice(headerEndIndex + 1, 0, '', entry);
+      } else {
+        lines.push('', entry);
+      }
+
+      const newContent = lines.join('\n');
+      await fs.writeFile(this.changelogPath, newContent, 'utf-8');
+
+      logger.info(`Changelog updated: ${this.changelogPath}`);
+
+    } catch (error) {
+      logger.error(`Failed to generate changelog: ${error.message}`);
+      throw error;
+    }
+  }
+
+  /**
+   * Build changelog header
+   * @private
+   */
+  _buildChangelogHeader() {
+    return `# Peacemaker Merge Changelog
+
+This file tracks all merges performed by Peacemaker, including intent summaries, 
+verification results, and applied changes.
+
+---
+`;
+  }
+
+  /**
+   * Build a single changelog entry
+   * @private
+   */
+  _buildChangelogEntry(branch, intent, replayResult, classification) {
+    const timestamp = new Date().toLocaleString('en-GB', { timeZone: 'Africa/Lagos', hour12: false }).replace(',', '');
+    const date = timestamp.split(' ')[0];
     
-    // Build entry
-    const entry = _buildChangelogEntry({
-      timestamp,
-      featureBranch,
-      baseBranch,
-      tier,
-      classification,
-      intent,
-      filesModified,
-      overlappingFiles,
-      preservedFiles,
-      deletedFiles,
-      verificationPassed,
-      backupTag,
-    });
+    const lines = [];
     
-    // Read existing changelog or create new
-    let changelog = '';
-    if (fs.existsSync(CHANGELOG_PATH)) {
-      changelog = fs.readFileSync(CHANGELOG_PATH, 'utf8');
-    } else {
-      changelog = '# Peacemakr Changelog\n\n';
+    // Header
+    lines.push(`## ${date} - ${branch} → main`);
+    lines.push('');
+
+    // Intent
+    if (replayResult.extractedIntent) {
+      lines.push(`**Intent:** ${replayResult.extractedIntent.summary}`);
+      lines.push('');
+      
+      if (replayResult.extractedIntent.goals && replayResult.extractedIntent.goals.length > 0) {
+        lines.push('**Goals:**');
+        replayResult.extractedIntent.goals.forEach(goal => {
+          lines.push(`- ${goal}`);
+        });
+        lines.push('');
+      }
+    }
+
+    // Classification
+    lines.push(`**Tier:** ${classification.tier} (${classification.reasoning.summary})`);
+    lines.push('');
+
+    // Divergence
+    lines.push('**Divergence:**');
+    lines.push(`- ${classification.metrics.commitsBehind} commits behind main`);
+    lines.push(`- ${classification.metrics.commitsAhead} commits ahead of main`);
+    lines.push(`- ${classification.metrics.changedFilesCount} files modified`);
+    if (classification.metrics.conflictingFilesCount > 0) {
+      lines.push(`- ${classification.metrics.conflictingFilesCount} potential conflicts`);
+    }
+    lines.push('');
+
+    // Files Modified
+    if (replayResult.appliedChanges && replayResult.appliedChanges.length > 0) {
+      lines.push('**Files Modified:**');
+      
+      const maxFiles = 20;
+      const filesToShow = replayResult.appliedChanges.slice(0, maxFiles);
+      
+      filesToShow.forEach(change => {
+        const prefix = change.operation === 'create' ? '+ ' :
+                      change.operation === 'delete' ? '- ' :
+                      change.operation === 'preserve' ? '= ' :
+                      '~ ';
+        lines.push(`${prefix}${change.filePath}`);
+      });
+
+      if (replayResult.appliedChanges.length > maxFiles) {
+        lines.push(`... and ${replayResult.appliedChanges.length - maxFiles} more files`);
+      }
+      lines.push('');
+    }
+
+    // Verification
+    const verificationStatus = replayResult.verification?.passed ? 'Passed' : 'Had Issues';
+    const retryNote = replayResult.retryNeeded ? ' (1 retry needed)' : '';
+    lines.push(`**Verification:** ${verificationStatus}${retryNote}`);
+    
+    if (replayResult.retryNeeded && replayResult.errorContext) {
+      lines.push(`- Self-check detected: ${replayResult.errorContext.rootCause}`);
+      lines.push(`- Auto-corrected: ${replayResult.errorContext.fixStrategy}`);
     }
     
-    // Append new entry
-    changelog += entry + '\n';
-    
-    // Write back
-    fs.writeFileSync(CHANGELOG_PATH, changelog, 'utf8');
-    
-    // Commit the changelog
-    await stageFiles([CHANGELOG_PATH]);
-    await commitChanges('chore: update Peacemakr changelog');
-    
-    logger.info('✔ Changelog updated');
-  } catch (error) {
-    logger.error(`Failed to update changelog: ${error.message}`);
-    throw error;
-  }
-}
+    if (replayResult.verification?.issues && replayResult.verification.issues.length > 0) {
+      lines.push(`- ${replayResult.verification.issues.length} issue(s) flagged`);
+    }
+    lines.push('');
 
-function _buildChangelogEntry(options) {
-  const {
-    timestamp,
-    featureBranch,
-    baseBranch,
-    tier,
-    classification,
-    intent,
-    filesModified,
-    overlappingFiles,
-    preservedFiles,
-    deletedFiles,
-    verificationPassed,
-    backupTag,
-  } = options;
-  
-  const lines = [];
-  
-  lines.push(`## [${timestamp} WAT] ${featureBranch} → ${baseBranch}`);
-  lines.push('');
-  lines.push(`**Tier:** ${tier} (${classification.reason})`);
-  lines.push(`**Intent:** "${intent.summary}"`);
-  lines.push(`**Confidence:** ${intent.confidence}`);
-  lines.push('');
-  
-  lines.push('**Files:**');
-  
-  // Categorize files
-  const added = filesModified.filter(f => !overlappingFiles.includes(f) && !preservedFiles.includes(f));
-  const modified = overlappingFiles;
-  const preserved = preservedFiles;
-  const deleted = deletedFiles;
-  
-  for (const file of added.slice(0, 10)) {
-    lines.push(`- + ${file}`);
-  }
-  if (added.length > 10) {
-    lines.push(`- ... and ${added.length - 10} more added`);
-  }
-  
-  for (const file of modified.slice(0, 10)) {
-    lines.push(`- ~ ${file}`);
-  }
-  if (modified.length > 10) {
-    lines.push(`- ... and ${modified.length - 10} more modified`);
-  }
-  
-  for (const file of preserved.slice(0, 5)) {
-    lines.push(`- = ${file} (preserved from base)`);
-  }
-  if (preserved.length > 5) {
-    lines.push(`- ... and ${preserved.length - 5} more preserved`);
-  }
-  
-  for (const file of deleted.slice(0, 5)) {
-    lines.push(`- - ${file} (deleted)`);
-  }
-  if (deleted.length > 5) {
-    lines.push(`- ... and ${deleted.length - 5} more deleted`);
-  }
-  
-  lines.push('');
-  lines.push(`**Verification:** ${verificationPassed ? 'Passed' : 'Failed'}`);
-  
-  if (backupTag) {
-    lines.push(`**Backup tag:** ${backupTag}`);
-  }
-  
-  lines.push('');
-  
-  return lines.join('\n');
-}
+    // Metadata
+    lines.push(`**Merged by:** ${process.env.USER || 'admin'}@${require('os').hostname()}`);
+    lines.push(`**Timestamp:** ${timestamp}`);
+    lines.push('');
+    lines.push('---');
 
-export function readChangelogStats() {
-  try {
-    if (!fs.existsSync(CHANGELOG_PATH)) {
-      return {
-        totalMerges: 0,
+    return lines.join('\n');
+  }
+
+  /**
+   * Get recent changelog entries
+   * @param {number} count - Number of entries to retrieve
+   * @returns {Promise<Array>} Array of changelog entries
+   */
+  async getRecentEntries(count = 5) {
+    try {
+      const content = await fs.readFile(this.changelogPath, 'utf-8');
+      const entries = content.split('---').filter(e => e.trim() && !e.includes('Peacemaker Merge Changelog'));
+      return entries.slice(0, count).map(e => e.trim());
+    } catch (error) {
+      logger.debug('No changelog found or could not read it');
+      return [];
+    }
+  }
+
+  /**
+   * Generate a summary report of all merges
+   * @returns {Promise<Object>} Summary statistics
+   */
+  async generateSummary() {
+    try {
+      const content = await fs.readFile(this.changelogPath, 'utf-8');
+      
+      const entries = content.split('---').filter(e => e.trim() && !e.includes('Peacemaker Merge Changelog'));
+      
+      const summary = {
+        totalMerges: entries.length,
         tier1: 0,
         tier2: 0,
         tier3: 0,
         retriesNeeded: 0,
         verificationPassed: 0,
-        verificationFailed: 0,
+        verificationFailed: 0
       };
+
+      entries.forEach(entry => {
+        if (entry.includes('Tier:** 1') || entry.includes('Tier: 1')) summary.tier1++;
+        if (entry.includes('Tier:** 2') || entry.includes('Tier: 2')) summary.tier2++;
+        if (entry.includes('Tier:** 3') || entry.includes('Tier: 3')) summary.tier3++;
+        if (entry.includes('retry needed') || entry.includes('(1 retry needed)')) summary.retriesNeeded++;
+        if (entry.includes('Verification: Passed') || entry.includes('Verification:** Passed')) summary.verificationPassed++;
+        if (entry.includes('Verification: Had Issues') || entry.includes('Verification:** Had Issues')) summary.verificationFailed++;
+      });
+
+      return summary;
+
+    } catch (error) {
+      logger.debug('Could not generate summary');
+      return null;
     }
-    
-    const content = fs.readFileSync(CHANGELOG_PATH, 'utf8');
-    const entries = content.split(/^## \[/m).slice(1); // Split by entry headers
-    
-    let tier1 = 0;
-    let tier2 = 0;
-    let tier3 = 0;
-    let retriesNeeded = 0;
-    let verificationPassed = 0;
-    let verificationFailed = 0;
-    
-    for (const entry of entries) {
-      if (entry.includes('**Tier:** 1')) tier1++;
-      if (entry.includes('**Tier:** 2')) tier2++;
-      if (entry.includes('**Tier:** 3')) tier3++;
-      
-      if (entry.includes('Attempts: 2') || entry.includes('Attempts: 3')) {
-        retriesNeeded++;
-      }
-      
-      if (entry.includes('**Verification:** Passed')) verificationPassed++;
-      if (entry.includes('**Verification:** Failed')) verificationFailed++;
-    }
-    
-    return {
-      totalMerges: entries.length,
-      tier1,
-      tier2,
-      tier3,
-      retriesNeeded,
-      verificationPassed,
-      verificationFailed,
-    };
-  } catch (error) {
-    logger.error(`Failed to read changelog stats: ${error.message}`);
-    return {
-      totalMerges: 0,
-      tier1: 0,
-      tier2: 0,
-      tier3: 0,
-      retriesNeeded: 0,
-      verificationPassed: 0,
-      verificationFailed: 0,
-    };
+  }
+
+  /**
+   * Build a human-readable summary for display
+   * @param {Object} summary - Summary statistics
+   * @returns {string} Formatted summary
+   */
+  formatSummary(summary) {
+    if (!summary) return 'No merge history available';
+
+    const lines = [];
+    lines.push('Peacemaker Merge Statistics:');
+    lines.push(`  Total Merges: ${summary.totalMerges}`);
+    lines.push(`  Tier 1 (Minor): ${summary.tier1}`);
+    lines.push(`  Tier 2 (Moderate): ${summary.tier2}`);
+    lines.push(`  Tier 3 (Critical): ${summary.tier3}`);
+    lines.push(`  Retries Needed: ${summary.retriesNeeded}`);
+    lines.push(`  Verification Passed: ${summary.verificationPassed}`);
+    lines.push(`  Verification Failed: ${summary.verificationFailed}`);
+
+    return lines.join('\n');
   }
 }
 
-export function readChangelogHistory(count = 5) {
-  try {
-    if (!fs.existsSync(CHANGELOG_PATH)) {
-      return [];
-    }
-    
-    const content = fs.readFileSync(CHANGELOG_PATH, 'utf8');
-    const entries = content.split(/^## \[/m).slice(1); // Split by entry headers
-    
-    return entries.slice(-count).reverse().map(entry => '## [' + entry.trim());
-  } catch (error) {
-    logger.error(`Failed to read changelog history: ${error.message}`);
-    return [];
-  }
-}
+module.exports = ChangelogGenerator;
 
 // Made with Bob
