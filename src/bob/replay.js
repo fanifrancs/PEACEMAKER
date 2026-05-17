@@ -6,7 +6,7 @@ import { getFileContent, getFileContentBuffer, stageFiles, commitChanges } from 
 import logger from '../utils/logger.js';
 
 export async function replayIntent(rawContext, options = {}) {
-  const maxRetries = parseInt(process.env.PEACEMAKER_MAX_RETRIES || '1', 10);
+  const maxRetries = parseInt(process.env.PEACEMAKR_MAX_RETRIES || '1', 10);
   let attempts = 0;
   
   while (attempts <= maxRetries) {
@@ -156,7 +156,7 @@ async function _performReplay(rawContext, options) {
   
   // Stage and commit
   await stageFiles(['.']);
-  await commitChanges(`Peacemaker: replay intent from ${rawContext.featureBranch}`);
+  await commitChanges(`Peacemakr: replay intent from ${rawContext.featureBranch}`);
   
   logger.info(`[Replay] Replayed ${filesModified.length} file(s)`);
   

@@ -3,7 +3,7 @@ import path from 'path';
 import { commitChanges, stageFiles } from '../git/operations.js';
 import logger from '../utils/logger.js';
 
-const CHANGELOG_PATH = 'PEACEMAKER_CHANGELOG.md';
+const CHANGELOG_PATH = 'PEACEMAKR_CHANGELOG.md';
 
 export async function appendToChangelog(options) {
   const {
@@ -54,7 +54,7 @@ export async function appendToChangelog(options) {
     if (fs.existsSync(CHANGELOG_PATH)) {
       changelog = fs.readFileSync(CHANGELOG_PATH, 'utf8');
     } else {
-      changelog = '# Peacemaker Changelog\n\n';
+      changelog = '# Peacemakr Changelog\n\n';
     }
     
     // Append new entry
@@ -65,7 +65,7 @@ export async function appendToChangelog(options) {
     
     // Commit the changelog
     await stageFiles([CHANGELOG_PATH]);
-    await commitChanges('chore: update Peacemaker changelog');
+    await commitChanges('chore: update Peacemakr changelog');
     
     logger.info('✔ Changelog updated');
   } catch (error) {

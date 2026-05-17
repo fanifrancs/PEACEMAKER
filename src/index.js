@@ -41,12 +41,12 @@ export async function runMerge(featureBranch, options) {
   
   try {
     console.log('');
-    console.log(chalk.bold('⚔️  PEACEMAKER - Semantic Merge Resolution'));
+    console.log(chalk.bold('⚔️  PEACEMAKR - Semantic Merge Resolution'));
     console.log('');
     
     // Stale branch guard
     const currentBranch = await getCurrentBranch();
-    if (currentBranch.startsWith('peacemaker-replay-')) {
+    if (currentBranch.startsWith('peacemakr-replay-')) {
       logger.warn(`Stale replay branch detected: ${currentBranch}`);
       const localBranches = await getLocalBranches();
       const candidates = ['main', 'master', 'trunk', 'develop', 'dev'];
@@ -139,7 +139,7 @@ export async function runMerge(featureBranch, options) {
 async function _handleTier1Merge(featureBranch, baseBranch, classification, divergence) {
   try {
     // Direct merge with --no-ff
-    await git.merge([featureBranch, '--no-ff', '-m', `Merge ${featureBranch} via Peacemaker (Tier 1)`]);
+    await git.merge([featureBranch, '--no-ff', '-m', `Merge ${featureBranch} via Peacemakr (Tier 1)`]);
     
     showTier1Complete(featureBranch);
     
@@ -160,7 +160,7 @@ async function _handleTier1Merge(featureBranch, baseBranch, classification, dive
     
     console.log(chalk.green('✓ Merge completed successfully!'));
     console.log(`Branch ${featureBranch} has been merged into ${baseBranch}.`);
-    console.log(chalk.bold('📋 Changelog: PEACEMAKER_CHANGELOG.md'));
+    console.log(chalk.bold('📋 Changelog: PEACEMAKR_CHANGELOG.md'));
     console.log('');
     console.log(chalk.gray('                        Made with Bob 🤖'));
     console.log('');
@@ -216,7 +216,7 @@ async function _handleTier2Merge(
   console.log(chalk.bold('⚡ Running intent extraction and branch creation in parallel...'));
   console.log('');
   
-  const freshBranchName = `peacemaker-replay-${Date.now()}`;
+  const freshBranchName = `peacemakr-replay-${Date.now()}`;
   
   const [rawContext] = await Promise.all([
     extractIntent(featureBranch, baseBranch, userDescription),
@@ -236,7 +236,7 @@ async function _handleTier2Merge(
   spinner.succeed('Intent replayed successfully');
   
   // Phase 8: Create backup tag
-  const backupTag = `peacemaker-before-${featureBranch.replace(/\//g, '-')}-${Date.now()}`;
+  const backupTag = `peacemakr-before-${featureBranch.replace(/\//g, '-')}-${Date.now()}`;
   await checkoutBranch(baseBranch);
   await createTag(backupTag, 'HEAD');
   
@@ -292,7 +292,7 @@ async function _handleTier2Merge(
   console.log('');
   console.log(chalk.green('✓ Merge completed successfully!'));
   console.log(`Branch ${featureBranch} has been merged into ${baseBranch}.`);
-  console.log(chalk.bold('📋 Changelog: PEACEMAKER_CHANGELOG.md'));
+  console.log(chalk.bold('📋 Changelog: PEACEMAKR_CHANGELOG.md'));
   console.log('');
   console.log(chalk.gray('                        Made with Bob 🤖'));
   console.log('');
@@ -312,12 +312,12 @@ async function _handleTier3Analysis(featureBranch, baseBranch, mergeAnalysis, sp
   spinner.text = 'Finalizing report...';
   
   // Write report
-  fs.writeFileSync('PEACEMAKER_DIAGNOSTIC_REPORT.md', report, 'utf8');
+  fs.writeFileSync('PEACEMAKR_DIAGNOSTIC_REPORT.md', report, 'utf8');
   
   spinner.succeed('Resolution report ready');
   
   console.log('');
-  console.log(chalk.bold('📋 Diagnostic report: PEACEMAKER_DIAGNOSTIC_REPORT.md'));
+  console.log(chalk.bold('📋 Diagnostic report: PEACEMAKR_DIAGNOSTIC_REPORT.md'));
   console.log('');
   console.log(chalk.gray('                        Made with Bob 🤖'));
   console.log('');
@@ -328,7 +328,7 @@ export async function runAnalyze(featureBranch, options) {
   
   try {
     console.log('');
-    console.log(chalk.bold('🔍 PEACEMAKER - Branch Analysis'));
+    console.log(chalk.bold('🔍 PEACEMAKR - Branch Analysis'));
     console.log('');
     
     const baseBranch = options.base || await getCurrentBranch();
@@ -368,10 +368,10 @@ export async function runAnalyze(featureBranch, options) {
     spinner.succeed('Analysis complete');
     
     // Phase 6: Write report
-    fs.writeFileSync('PEACEMAKER_DIAGNOSTIC_REPORT.md', report, 'utf8');
+    fs.writeFileSync('PEACEMAKR_DIAGNOSTIC_REPORT.md', report, 'utf8');
     
     console.log('');
-    console.log(chalk.green('✔ Analysis complete. Report: PEACEMAKER_DIAGNOSTIC_REPORT.md'));
+    console.log(chalk.green('✔ Analysis complete. Report: PEACEMAKR_DIAGNOSTIC_REPORT.md'));
     console.log('');
     console.log(chalk.gray('                        Made with Bob 🤖'));
     console.log('');
@@ -387,7 +387,7 @@ export async function runStats() {
     const stats = readChangelogStats();
     
     console.log('');
-    console.log(chalk.bold('📊 Peacemaker Statistics'));
+    console.log(chalk.bold('📊 Peacemakr Statistics'));
     console.log(`  Total Merges:         ${stats.totalMerges}`);
     console.log(`  Tier 1 (Minor):        ${stats.tier1}`);
     console.log(`  Tier 2 (Moderate):     ${stats.tier2}`);

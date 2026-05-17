@@ -5,7 +5,7 @@ import { getCommitHistory, getFileContent, findForkPoint } from '../git/operatio
 import { extractIntentFromBob } from '../bob/client.js';
 import logger from '../utils/logger.js';
 
-const INTENT_CACHE_PATH = path.join(process.env.HOME, '.peacemaker-intent-cache.json');
+const INTENT_CACHE_PATH = path.join(process.env.HOME, '.peacemakr-intent-cache.json');
 const MAX_CACHE_ENTRIES = 50;
 
 function loadIntentCache() {

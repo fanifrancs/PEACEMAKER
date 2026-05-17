@@ -95,7 +95,7 @@ export async function createBranchFromLatest(branchName, baseBranch) {
 export async function mergeBranch(replayBranch, baseBranch, featureBranch) {
   try {
     await git.checkout(baseBranch);
-    await git.merge([replayBranch, '--no-ff', '-m', `Merge ${featureBranch} via Peacemaker`]);
+    await git.merge([replayBranch, '--no-ff', '-m', `Merge ${featureBranch} via Peacemakr`]);
     logger.info(`Merged ${replayBranch} into ${baseBranch}`);
   } catch (error) {
     logger.error(`Failed to merge ${replayBranch} into ${baseBranch}: ${error.message}`);

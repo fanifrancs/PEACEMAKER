@@ -5,7 +5,7 @@ import { generateDiagnosticSection } from '../bob/client.js';
 import { formatAnalysisForTerminal } from './analyzer.js';
 import logger from '../utils/logger.js';
 
-const ANALYZE_CACHE_PATH = path.join(process.env.HOME, '.peacemaker-analyze-cache.json');
+const ANALYZE_CACHE_PATH = path.join(process.env.HOME, '.peacemakr-analyze-cache.json');
 const MAX_CACHE_ENTRIES = 50;
 
 function loadAnalyzeCache() {
@@ -205,9 +205,9 @@ function _buildReport(mergeAnalysis, rawContext, branchIntent, structuralDiff, f
   
   const contributors = _getRecentCommitAuthors(rawContext.featureBranch);
   
-  const backupTag = `peacemaker-before-${rawContext.featureBranch.replace(/\//g, '-')}-${Date.now()}`;
+  const backupTag = `peacemakr-before-${rawContext.featureBranch.replace(/\//g, '-')}-${Date.now()}`;
   
-  const report = `# Peacemaker Diagnostic Report
+  const report = `# Peacemakr Diagnostic Report
 
 > **Refused:** Branch divergence too high for automated resolution — manual intervention required.
 

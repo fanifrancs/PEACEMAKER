@@ -5,7 +5,7 @@ import { runMerge, runAnalyze, runStats, runHistory } from '../src/index.js';
 const program = new Command();
 
 program
-  .name('peacemaker')
+  .name('peacemakr')
   .description('AI-powered semantic merge resolution using IBM Bob Shell')
   .version('1.0.0');
 
@@ -25,7 +25,7 @@ program
 
 program
   .command('stats')
-  .description('Show Peacemaker merge statistics')
+  .description('Show Peacemakr merge statistics')
   .action(runStats);
 
 program

@@ -1,12 +1,12 @@
-# Peacemaker
+# Peacemakr
 
 **AI-Powered Semantic Git Merge Tool**
 
-Peacemaker replaces traditional `git merge` with intelligent, intent-aware conflict resolution powered by IBM Bob Shell. Instead of dumping conflict markers on you, Peacemaker understands what your feature branch was trying to build and replays that intent onto a fresh branch cut from the latest base.
+Peacemakr replaces traditional `git merge` with intelligent, intent-aware conflict resolution powered by IBM Bob Shell. Instead of dumping conflict markers on you, Peacemakr understands what your feature branch was trying to build and replays that intent onto a fresh branch cut from the latest base.
 
-## What Peacemaker Does
+## What Peacemakr Does
 
-Normal `git merge` stops at the first conflict and leaves you with `<<<<<<<` markers. Peacemaker does something smarter:
+Normal `git merge` stops at the first conflict and leaves you with `<<<<<<<` markers. Peacemakr does something smarter:
 
 1. **Reads your branch history** — commits, diffs, and file changes
 2. **Asks Bob Shell what you were building** — extracts developer intent
@@ -22,7 +22,7 @@ The result: **clean merges, no conflict markers, full transparency**.
 
 Every merge is classified before execution:
 
-| Tier | Condition | What Peacemaker Does | Speed |
+| Tier | Condition | What Peacemakr Does | Speed |
 |------|-----------|---------------------|-------|
 | **1 — Minor** | ≤10 commits behind AND ≤5 files changed AND 0 conflicts | Direct `git merge --no-ff`, no Bob call | <1 second |
 | **2 — Moderate** | ≤100 commits behind AND ≤100 files AND ≤30 conflicts | Bob extracts intent → replay on fresh branch → approval | 1–3 min |
@@ -51,15 +51,15 @@ which bob
 # Should output: /path/to/bob
 ```
 
-### Install Peacemaker
+### Install Peacemakr
 
 ```bash
-cd ibm_bob_testing/PEACEMAKER
+cd ibm_bob_testing/PEACEMAKR
 npm install
 npm link
 ```
 
-Verify Peacemaker is installed:
+Verify Peacemakr is installed:
 
 ```bash
 peacemaker --version
@@ -74,13 +74,13 @@ Create a `.env` file in your project root (or use the provided template):
 
 ```bash
 BOB_API_KEY=''
-PEACEMAKER_LOG_LEVEL=info
-PEACEMAKER_MAX_RETRIES=1
+PEACEMAKR_LOG_LEVEL=info
+PEACEMAKR_MAX_RETRIES=1
 ```
 
 - `BOB_API_KEY`: Your IBM Bob API key (if required)
-- `PEACEMAKER_LOG_LEVEL`: Logging verbosity (`debug`, `info`, `warn`, `error`)
-- `PEACEMAKER_MAX_RETRIES`: Number of replay retries on verification failure
+- `PEACEMAKR_LOG_LEVEL`: Logging verbosity (`debug`, `info`, `warn`, `error`)
+- `PEACEMAKR_MAX_RETRIES`: Number of replay retries on verification failure
 
 ---
 
@@ -97,7 +97,7 @@ peacemaker merge feature/my-branch
 2. Classifies merge complexity (Tier 1, 2, or 3)
 3. For Tier 2: Extracts intent, replays on fresh branch, asks for approval
 4. Merges into current branch
-5. Updates `PEACEMAKER_CHANGELOG.md`
+5. Updates `PEACEMAKR_CHANGELOG.md`
 
 **Options:**
 - `-b, --base <branch>`: Specify base branch (default: current branch)
@@ -128,7 +128,7 @@ peacemaker analyze feature/my-branch
 **What happens:**
 1. Analyzes branch divergence
 2. Classifies merge complexity
-3. Generates `PEACEMAKER_DIAGNOSTIC_REPORT.md` with:
+3. Generates `PEACEMAKR_DIAGNOSTIC_REPORT.md` with:
    - Branch statistics
    - Merge analysis
    - What the branch was building (Bob analysis)
@@ -156,7 +156,7 @@ peacemaker stats
 
 **Output:**
 ```
-📊 Peacemaker Statistics
+📊 Peacemakr Statistics
   Total Merges:         12
   Tier 1 (Minor):        4
   Tier 2 (Moderate):     7
@@ -188,8 +188,8 @@ peacemaker history -n 10
 
 | File | Location | Description |
 |------|----------|-------------|
-| `PEACEMAKER_CHANGELOG.md` | Repo root | Appended after every successful merge |
-| `PEACEMAKER_DIAGNOSTIC_REPORT.md` | Repo root | Generated for Tier 3 branches and `analyze` command |
+| `PEACEMAKR_CHANGELOG.md` | Repo root | Appended after every successful merge |
+| `PEACEMAKR_DIAGNOSTIC_REPORT.md` | Repo root | Generated for Tier 3 branches and `analyze` command |
 | `peacemaker.log` | Repo root | Debug log with WAT timestamps |
 | `~/.peacemaker-intent-cache.json` | Home directory | Intent extraction cache (max 50 entries) |
 | `~/.peacemaker-analyze-cache.json` | Home directory | Analysis cache for `analyze` command |
@@ -201,7 +201,7 @@ peacemaker history -n 10
 ```bash
 $ peacemaker merge feature/add-payments
 
-⚔️  PEACEMAKER - Semantic Merge Resolution
+⚔️  PEACEMAKR - Semantic Merge Resolution
 
 ✔ Branch analysis complete
 [info]: Branch is 5 behind, 11 ahead
@@ -224,7 +224,7 @@ Merge Analysis
     - src/app.js
 
   Recommended focus:
-    - Peacemaker will attempt semantic reconciliation for 1 file(s)...
+    - Peacemakr will attempt semantic reconciliation for 1 file(s)...
 ──────────────────────────────────────────────────
 
 📋 Pre-flight Check
@@ -242,7 +242,7 @@ Press Enter to let Bob infer from commit history.
 
 ⚡ Running intent extraction and branch creation in parallel...
 
-✓ Fresh branch created: peacemaker-replay-1778997827915
+✓ Fresh branch created: peacemakr-replay-1778997827915
 ✔ ✓ Intent extracted
 
 ⠋ Replaying intent onto fresh branch...
@@ -250,11 +250,11 @@ Press Enter to let Bob infer from commit history.
 [info]: [Bob Merge] Bob wrote /home/.../src/app.js directly (96 lines)
 ✔ Intent replayed successfully
 
-📦 Backup snapshot: peacemaker-before-feature-add-payments-1778997934676 (points to main)
-↩ To restore: git checkout main && git reset --hard peacemaker-before-feature-add-payments-1778997934676
+📦 Backup snapshot: peacemakr-before-feature-add-payments-1778997934676 (points to main)
+↩ To restore: git checkout main && git reset --hard peacemakr-before-feature-add-payments-1778997934676
 
 ╔════════════════════════════════════════════════════════════════════╗
-║                    PEACEMAKER MERGE SUMMARY                        ║
+║                    PEACEMAKR MERGE SUMMARY                        ║
 ╚════════════════════════════════════════════════════════════════════╝
 
 Branch: feature/add-payments
@@ -286,7 +286,7 @@ Verification:
   Confidence: high
 
 📂 Review changes before approving:
-git diff peacemaker-before-feature-add-payments-1778997934676..HEAD
+git diff peacemakr-before-feature-add-payments-1778997934676..HEAD
 
 Approve this merge? (y/N): y
 
@@ -296,7 +296,7 @@ Approve this merge? (y/N): y
 
 ✓ Merge completed successfully!
 Branch feature/add-payments has been merged into main.
-📋 Changelog: PEACEMAKER_CHANGELOG.md
+📋 Changelog: PEACEMAKR_CHANGELOG.md
 
                         Made with Bob 🤖
 ```
@@ -312,17 +312,17 @@ Branch feature/add-payments has been merged into main.
 3. **Merge Analysis** — Detect overlapping files, directory moves, config changes
 4. **Pre-flight Check** — Show branch summary, confirm readiness
 5. **Intent Extraction** — Bob analyzes commits + diffs to understand developer intent
-6. **Fresh Branch Creation** — Create `peacemaker-replay-<timestamp>` from latest base
+6. **Fresh Branch Creation** — Create `peacemakr-replay-<timestamp>` from latest base
 7. **Intent Replay** — Seed all feature files, use Bob to resolve overlaps
-8. **Backup Tag** — Create `peacemaker-before-<branch>-<timestamp>` for rollback
+8. **Backup Tag** — Create `peacemakr-before-<branch>-<timestamp>` for rollback
 9. **Approval Prompt** — Show full summary, wait for user confirmation
 10. **Merge** — Merge replay branch into base with `--no-ff`
 11. **Cleanup** — Delete replay branch
-12. **Changelog** — Append entry to `PEACEMAKER_CHANGELOG.md`
+12. **Changelog** — Append entry to `PEACEMAKR_CHANGELOG.md`
 
 ### Tier 3 Diagnostic Report
 
-When a branch is too diverged, Peacemaker generates a detailed report with:
+When a branch is too diverged, Peacemakr generates a detailed report with:
 
 - **Branch Statistics** — Commits, files, renames
 - **Merge Analysis** — Overlaps, directory moves, config conflicts
@@ -349,22 +349,22 @@ which bob  # Verify installation
 
 ### Stale Replay Branch
 
-If Peacemaker crashes mid-merge, you may be left on a `peacemaker-replay-*` branch.
+If Peacemakr crashes mid-merge, you may be left on a `peacemakr-replay-*` branch.
 
 **Solution:**
-Peacemaker automatically detects and cleans up stale branches on startup. Just run any command:
+Peacemakr automatically detects and cleans up stale branches on startup. Just run any command:
 ```bash
 peacemaker stats  # Will trigger cleanup
 ```
 
 ### Verification Failed
 
-If syntax checks fail after replay, Peacemaker will retry once (configurable via `PEACEMAKER_MAX_RETRIES`).
+If syntax checks fail after replay, Peacemakr will retry once (configurable via `PEACEMAKR_MAX_RETRIES`).
 
 **Solution:**
 - Check `peacemaker.log` for details
 - Manually inspect the replay branch before approval
-- Adjust `PEACEMAKER_MAX_RETRIES` in `.env`
+- Adjust `PEACEMAKR_MAX_RETRIES` in `.env`
 
 ---
 
@@ -373,14 +373,14 @@ If syntax checks fail after replay, Peacemaker will retry once (configurable via
 | Variable | Default | Description |
 |----------|---------|-------------|
 | `BOB_API_KEY` | `''` | IBM Bob API key (if required) |
-| `PEACEMAKER_LOG_LEVEL` | `info` | Logging level (`debug`, `info`, `warn`, `error`) |
-| `PEACEMAKER_MAX_RETRIES` | `1` | Number of replay retries on verification failure |
+| `PEACEMAKR_LOG_LEVEL` | `info` | Logging level (`debug`, `info`, `warn`, `error`) |
+| `PEACEMAKR_MAX_RETRIES` | `1` | Number of replay retries on verification failure |
 
 ---
 
 ## Caching
 
-Peacemaker caches expensive operations to speed up repeated analyses:
+Peacemakr caches expensive operations to speed up repeated analyses:
 
 - **Intent Cache** (`~/.peacemaker-intent-cache.json`): Stores extracted intents by `branch:commit-hash`
 - **Analyze Cache** (`~/.peacemaker-analyze-cache.json`): Stores diagnostic reports for `analyze` command
@@ -394,21 +394,21 @@ Caches are automatically trimmed to 50 entries (most recent kept).
 Every Tier 2 merge creates a backup tag before making changes:
 
 ```bash
-# Tag format: peacemaker-before-<branch>-<timestamp>
-git tag peacemaker-before-feature-auth-1778997934676 HEAD
+# Tag format: peacemakr-before-<branch>-<timestamp>
+git tag peacemakr-before-feature-auth-1778997934676 HEAD
 ```
 
 **To rollback a merge:**
 ```bash
 git checkout main
-git reset --hard peacemaker-before-feature-auth-1778997934676
+git reset --hard peacemakr-before-feature-auth-1778997934676
 ```
 
 ---
 
 ## Contributing
 
-Peacemaker is built with:
+Peacemakr is built with:
 - **Node.js** (ESM modules)
 - **simple-git** (Git operations)
 - **commander** (CLI framework)

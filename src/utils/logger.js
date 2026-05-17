@@ -1,7 +1,7 @@
 import winston from 'winston';
 
 const logger = winston.createLogger({
-  level: process.env.PEACEMAKER_LOG_LEVEL || 'info',
+  level: process.env.PEACEMAKR_LOG_LEVEL || 'info',
   format: winston.format.combine(
     winston.format.timestamp({
       format: () => {
@@ -19,7 +19,7 @@ const logger = winston.createLogger({
   ),
   transports: [
     new winston.transports.Console(),
-    new winston.transports.File({ filename: 'peacemaker.log' }),
+    new winston.transports.File({ filename: 'peacemakr.log' }),
   ],
 });
 

@@ -1,10 +1,10 @@
 {
-  "name": "peacemaker",
+  "name": "peacemakr",
   "version": "1.0.0",
   "description": "AI-powered semantic merge resolution for Git using IBM Bob Shell",
   "main": "src/index.js",
   "bin": {
-    "peacemaker": "./bin/peacemaker.js"
+    "peacemakr": "./bin/peacemakr.js"
   },
   "scripts": {
     "start": "node bin/peacemaker.js"

@@ -15,7 +15,7 @@ export async function showMergeSummary(options) {
   
   console.log('');
   console.log(chalk.bold('╔════════════════════════════════════════════════════════════════════╗'));
-  console.log(chalk.bold('║                    PEACEMAKER MERGE SUMMARY                        ║'));
+  console.log(chalk.bold('║                    PEACEMAKR MERGE SUMMARY                        ║'));
   console.log(chalk.bold('╚════════════════════════════════════════════════════════════════════╝'));
   console.log('');
   
@@ -164,14 +164,14 @@ export function showTier3Refusal() {
   console.log('');
   console.log(chalk.yellow('⚠  Merge not possible — branch divergence is too high for automated resolution'));
   console.log('');
-  console.log('Peacemaker has analysed the branch and is generating a detailed report to guide manual resolution.');
+  console.log('Peacemakr has analysed the branch and is generating a detailed report to guide manual resolution.');
   console.log('');
 }
 
 export function showTier1Complete(featureBranch) {
   console.log('');
   console.log('════════════════════════════════════════════════════════════════════');
-  console.log(chalk.bold('                    PEACEMAKER — TIER 1 MERGE COMPLETE'));
+  console.log(chalk.bold('                    PEACEMAKR — TIER 1 MERGE COMPLETE'));
   console.log('════════════════════════════════════════════════════════════════════');
   console.log('');
   console.log(`  Branch:   ${featureBranch}`);
